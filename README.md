@@ -36,5 +36,21 @@
     * __UseState__ - Është përdorur për të ruajtur dhe menaxhuar të dhënat lokale të një formulari kontakti në ekranin ContactScreen, apo aktivizimi i njoftimeve, zgjedhja e gjuhës në 'SettingsScreen'
     * __Shumë komponentë të tjerë ...__ - Si pjesë e funksionalitetit dhe ndërtimit të aplikacionit
 
-
+##  **Faza 2**
+1. Autentifikimi (Firebase Authentication)
+    * Ofron mundësinë për regjistrim dhe hyrje me Email/Password ose me Google Sign-In.
+    * Validimi i inputeve kryhet gjatë procesit të regjistrimit dhe hyrjes.
+    * Pas hyrjes, përdoruesi ridrejtohet në faqen Ballina.
+    * Për t’u bërë logout, shkoni te Profili → Ikona e ingranazhit → Dil.
+2. CRUD me Firebase
+    * __Create__: Përveç regjistrimit të përdoruesve të rinj, mundësohet edhe shtimi i raportimeve të reja përmes butonit FixIt apo dhe krijimi i një formulari të plotësuar nga përdoruesi
+    * __Read__: Të dhënat lexohen nga databaza, si p.sh.:  
+        * Raportimet në hartë te faqja Raportimet,
+        * Informacionet e përdoruesit te Profili,
+        * Statistikat në Ballina.
+    * __Update__: Përdoruesi mund të modifikojë raportimet që ka krijuar, si dhe të dhënat personale në profil.
+    * __Delete__: Mundësohet fshjirja e raportimeve
+    * Është trajtuar logjika për loading, error, dhe success në disa faqe, përfshirë FixIt gjatë shtimit të raportimeve.
+3.  Navigimi dhe UI
+    Navigimi është plotësisht funksional nëpër të gjitha faqet kryesore.Gjithashtu Janë bërë përmirësime në UI për një përvojë më të mirë të përdoruesit.
 

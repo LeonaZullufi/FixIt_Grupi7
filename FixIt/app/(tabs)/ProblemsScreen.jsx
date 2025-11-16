@@ -10,14 +10,11 @@ import {
 } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { collection, onSnapshot, query } from "firebase/firestore";
+import { getAuth } from "firebase/auth";   
 import { db } from "../../firebase.js";
 
 const mapStyle = [
-  {
-    featureType: "poi",
-    elementType: "labels",
-    stylers: [{ visibility: "off" }],
-  },
+  { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
 ];
 
 const LATITUDE_MIN = 40.8;
@@ -32,8 +29,6 @@ const imageMap = {
   "KendiLojrave.jpg": require("../../assets/ProblemOnMap/KendiLojrave.jpg"),
   "MbeturinaSkenderaj.jpg": require("../../assets/ProblemOnMap/MbeturinaSkenderaj.jpg"),
   "NdriqimPrishtine.jpg": require("../../assets/ProblemOnMap/NdriqimPrishtine.jpg"),
-
-
 };
 
 export default function ReportScreen() {
@@ -46,6 +41,9 @@ export default function ReportScreen() {
     latitudeDelta: 0.55,
     longitudeDelta: 0.65,
   });
+
+  const auth = getAuth();
+  const currentUserEmail = auth.currentUser?.email || "";
 
   const onRegionChangeComplete = (newRegion) => {
     let latitude = newRegion.latitude;
@@ -106,16 +104,29 @@ export default function ReportScreen() {
         onRegionChangeComplete={onRegionChangeComplete}
         customMapStyle={mapStyle}
       >
-        {reports.map((report) => (
-          <Marker
-            key={report.id}
-            coordinate={{
-              latitude: report.latitude,
-              longitude: report.longitude,
-            }}
-            onPress={() => setSelectedMarker(report)}
-          />
-        ))}
+        {reports.map((report) => {
+          const isMyReport = report.userEmail === currentUserEmail;
+          const isFinished = report.finished === true; 
+
+          let pinColor = "blue";
+
+          if (isMyReport) {
+            pinColor = isFinished ? "green" : "red";
+          }
+
+          return (
+            <Marker
+              key={report.id}
+              coordinate={{
+                latitude: report.latitude,
+                longitude: report.longitude,
+              }}
+              onPress={() => setSelectedMarker(report)}
+              pinColor={pinColor}     
+              calloutEnabled={false}
+            />
+          );
+        })}
       </MapView>
 
       <Modal
@@ -162,18 +173,9 @@ export default function ReportScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  map: {
-    flex: 1,
-    width: "100%",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  container: { flex: 1 },
+  map: { flex: 1, width: "100%" },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -188,18 +190,8 @@ const styles = StyleSheet.create({
     maxHeight: 500,
     alignItems: "center",
   },
-  modalTitle: {
-    fontWeight: "bold",
-    fontSize: 18,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  image: {
-    width: 300,
-    height: 200,
-    marginTop: 10,
-    borderRadius: 8,
-  },
+  modalTitle: { fontWeight: "bold", fontSize: 18, textAlign: "center", marginBottom: 8 },
+  image: { width: 300, height: 200, marginTop: 10, borderRadius: 8 },
   closeButton: {
     backgroundColor: "#2196F3",
     marginTop: 20,
