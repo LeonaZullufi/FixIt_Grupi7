@@ -5,14 +5,15 @@ import SettingsList from "./SettingsList";
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import { auth } from "../../firebase";
+import { useTheme } from "../../context/themeContext";
 
 export default function SettingsScreen({ onClose }) {
   const [notifications, setNotifications] = useState(true);
   const [expandedSetting, setExpandedSetting] = useState(null);
   const [language, setLanguage] = useState("Anglisht");
   const languages = ["Anglisht", "Shqip"];
-  const [theme, setTheme] = useState("Drite");
-  const themes = ["Drite", "Errët"];
+  const { theme: appTheme, toggleTheme } = useTheme();
+  const themes = ["Dritë", "Errët"];
   const router = useRouter();
 
   const settings = [
@@ -30,7 +31,13 @@ export default function SettingsScreen({ onClose }) {
       value: language,
       type: "button",
     },
-    { id: "3", icon: "moon", label: "Tema", value: theme, type: "button" },
+    {
+      id: "3",
+      icon: "moon",
+      label: "Tema",
+      value: appTheme === "dark" ? "Errët" : "Dritë",
+      type: "button",
+    },
     {
       id: "4",
       icon: "bell",
@@ -87,8 +94,8 @@ export default function SettingsScreen({ onClose }) {
           setLanguage={setLanguage}
           setNotifications={setNotifications}
           handleSettingPress={handleSettingPress}
-          theme={theme}
-          setTheme={setTheme}
+          theme={appTheme}
+          setTheme={toggleTheme}
           themes={themes}
         />
       </View>

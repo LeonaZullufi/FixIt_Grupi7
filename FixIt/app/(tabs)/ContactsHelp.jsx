@@ -15,18 +15,22 @@ import AboutAppComponent from "../../components/contacts/AboutAppComponent";
 import FAQSectionComponent from "../../components/contacts/FAQSectionComponent";
 import ContactSection from "../../components/contacts/ContactSection";
 import AppInfo from "../../components/contacts/AppInfo";
+import { useTheme } from "../../context/themeContext";
 
 export default function ContactScreen() {
   const navigation = useNavigation();
   const lastHeaderState = useRef(true);
+  const { colors, theme } = useTheme();
 
   const handleScroll = (event) => {
     const currentY = event.nativeEvent.contentOffset.y;
 
+    const barStyle = theme === "dark" ? "light-content" : "dark-content";
+
     if (currentY > 50 && lastHeaderState.current) {
       navigation.setOptions({ headerShown: false });
       lastHeaderState.current = false;
-      StatusBar.setBarStyle("dark-content");
+      StatusBar.setBarStyle(barStyle);
     }
 
     if (currentY < 30 && !lastHeaderState.current) {
@@ -53,8 +57,6 @@ export default function ContactScreen() {
 
   const validateForm = () => {
     let newErrors = {};
-
-    const nameRegex = /^[A-Za-zÀ-ž\s]+$/;
 
     if (form.message.trim().length < 6)
       newErrors.message = "Mesazhi duhet të ketë të paktën 6 karaktere.";
@@ -83,7 +85,9 @@ export default function ContactScreen() {
   };
 
   return (
-    <View style={styles.mainContainer}>
+    <View
+      style={[styles.mainContainer, { backgroundColor: colors.background }]}
+    >
       <KeyboardAwareScrollView
         style={styles.contentContainer}
         enableResetScrollToCoords={false}
@@ -95,7 +99,7 @@ export default function ContactScreen() {
         <View style={styles.inner}>
           <View style={styles.header}>
             <Ionicons name="information-circle" size={28} color="#17cbebff" />
-            <Text style={[styles.title, { marginTop: 8 }]}>
+            <Text style={[styles.title, { marginTop: 8, color: colors.text }]}>
               FixIt – Ndihmë & Udhëzime
             </Text>
           </View>
@@ -104,19 +108,29 @@ export default function ContactScreen() {
           <AboutAppComponent />
           <FAQSectionComponent />
 
-          <Text style={[styles.title, { marginTop: 10 }]}>
+          <Text style={[styles.title, { marginTop: 10, color: colors.text }]}>
             Informacione Kontakti
           </Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Plotësoni formularin dhe ekipi ynë do t’ju kontaktojë brenda 24
             orëve
           </Text>
 
-          <View style={styles.formContainer}>
+          <View
+            style={[styles.formContainer, { backgroundColor: colors.card }]}
+          >
             <TextInput
-              style={[styles.input, errors.name && styles.errorInput]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.background,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+                errors.name && styles.errorInput,
+              ]}
               placeholder="Emri"
-              placeholderTextColor="#aaa"
+              placeholderTextColor={colors.textSecondary}
               value={form.name}
               onChangeText={(text) => handleChange("name", text)}
               onSubmitEditing={() => lastNameRef.current?.focus()}
@@ -124,9 +138,17 @@ export default function ContactScreen() {
 
             <TextInput
               ref={lastNameRef}
-              style={[styles.input, errors.lastName && styles.errorInput]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.background,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+                errors.lastName && styles.errorInput,
+              ]}
               placeholder="Mbiemri"
-              placeholderTextColor="#aaa"
+              placeholderTextColor={colors.textSecondary}
               value={form.lastName}
               onChangeText={(text) => handleChange("lastName", text)}
               onSubmitEditing={() => emailRef.current?.focus()}
@@ -134,9 +156,17 @@ export default function ContactScreen() {
 
             <TextInput
               ref={emailRef}
-              style={[styles.input, errors.email && styles.errorInput]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.background,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+                errors.email && styles.errorInput,
+              ]}
               placeholder="Email"
-              placeholderTextColor="#aaa"
+              placeholderTextColor={colors.textSecondary}
               value={form.email}
               onChangeText={(text) => handleChange("email", text)}
               keyboardType="email-address"
@@ -148,17 +178,25 @@ export default function ContactScreen() {
               style={[
                 styles.input,
                 styles.textArea,
+                {
+                  backgroundColor: colors.background,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
                 errors.message && styles.errorInput,
               ]}
               placeholder="Mesazhi (min. 6 karaktere)"
-              placeholderTextColor="#aaa"
+              placeholderTextColor={colors.textSecondary}
               value={form.message}
               onChangeText={(text) => handleChange("message", text)}
               multiline
               numberOfLines={4}
             />
 
-            <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: colors.tabBar }]}
+              onPress={handleSubmit}
+            >
               <Text style={styles.buttonText}>Dërgo Mesazhin</Text>
             </TouchableOpacity>
           </View>
@@ -182,13 +220,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    color: "black",
     fontWeight: "bold",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: "black",
     textAlign: "center",
     marginBottom: 20,
   },
@@ -199,23 +235,21 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: "100%",
-    backgroundColor: "#ced4da",
     padding: 20,
     borderRadius: 15,
     marginBottom: 20,
   },
   input: {
-    backgroundColor: "#fff",
     borderRadius: 10,
     padding: 10,
     marginBottom: 12,
+    borderWidth: 1,
   },
   textArea: {
     height: 100,
     textAlignVertical: "top",
   },
   button: {
-    backgroundColor: "#023e8a",
     padding: 12,
     borderRadius: 10,
     alignItems: "center",

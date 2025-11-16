@@ -11,9 +11,11 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { useTheme } from "../../context/themeContext";
 
 export default function EditProfile() {
   const router = useRouter();
+  const { colors } = useTheme();
 
   const [form, setForm] = useState({
     firstName: "",
@@ -80,92 +82,169 @@ export default function EditProfile() {
 
   return (
     <KeyboardAwareScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={{ flexGrow: 1 }}
       keyboardShouldPersistTaps="handled"
       extraScrollHeight={20}
       enableOnAndroid={true}
       enableAutomaticScroll={true}
     >
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.background,
+            borderBottomColor: colors.border,
+          },
+        ]}
+      >
         <TouchableOpacity onPress={() => router.replace("/Profile")}>
-          <Ionicons name="chevron-back" size={24} color="#000" />
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Edit Profile</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Edit Profile</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.label}>Emri</Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>
+          Emri
+        </Text>
         <TextInput
-          style={[styles.input, errors.firstName && styles.inputError]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.card,
+              color: colors.text,
+              borderColor: colors.border,
+            },
+            errors.firstName && styles.inputError,
+          ]}
           value={form.firstName}
           onChangeText={(text) => setForm({ ...form, firstName: text })}
           placeholder="Shkruani emrin"
+          placeholderTextColor={colors.textSecondary}
         />
         {errors.firstName && (
           <Text style={styles.errorText}>{errors.firstName}</Text>
         )}
 
-        <Text style={styles.label}>Mbiemri</Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>
+          Mbiemri
+        </Text>
         <TextInput
-          style={[styles.input, errors.lastName && styles.inputError]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.card,
+              color: colors.text,
+              borderColor: colors.border,
+            },
+            errors.lastName && styles.inputError,
+          ]}
           value={form.lastName}
           onChangeText={(text) => setForm({ ...form, lastName: text })}
           placeholder="Shkruani mbiemrin"
+          placeholderTextColor={colors.textSecondary}
         />
         {errors.lastName && (
           <Text style={styles.errorText}>{errors.lastName}</Text>
         )}
 
-        <Text style={styles.label}>Email</Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>
+          Email
+        </Text>
         <TextInput
-          style={[styles.input, errors.email && styles.inputError]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.card,
+              color: colors.text,
+              borderColor: colors.border,
+            },
+            errors.email && styles.inputError,
+          ]}
           value={form.email}
           onChangeText={(text) => setForm({ ...form, email: text })}
           placeholder="email@example.com"
+          placeholderTextColor={colors.textSecondary}
           keyboardType="email-address"
           autoCapitalize="none"
         />
         {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-        <Text style={styles.label}>Password aktual (për siguri)</Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>
+          Password aktual (për siguri)
+        </Text>
         <TextInput
-          style={[styles.input, errors.currentPassword && styles.inputError]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.card,
+              color: colors.text,
+              borderColor: colors.border,
+            },
+            errors.currentPassword && styles.inputError,
+          ]}
           value={form.currentPassword}
           onChangeText={(text) => setForm({ ...form, currentPassword: text })}
           placeholder="Shkruani password-in aktual"
+          placeholderTextColor={colors.textSecondary}
           secureTextEntry
         />
         {errors.currentPassword && (
           <Text style={styles.errorText}>{errors.currentPassword}</Text>
         )}
 
-        <Text style={styles.label}>Password i ri (opsional)</Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>
+          Password i ri (opsional)
+        </Text>
         <TextInput
-          style={[styles.input, errors.newPassword && styles.inputError]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.card,
+              color: colors.text,
+              borderColor: colors.border,
+            },
+            errors.newPassword && styles.inputError,
+          ]}
           value={form.newPassword}
           onChangeText={(text) => setForm({ ...form, newPassword: text })}
           placeholder="Lëreni bosh nëse nuk doni të ndryshoni"
+          placeholderTextColor={colors.textSecondary}
           secureTextEntry
         />
         {errors.newPassword && (
           <Text style={styles.errorText}>{errors.newPassword}</Text>
         )}
 
-        <Text style={styles.label}>Konfirmo password-in e ri</Text>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>
+          Konfirmo password-in e ri
+        </Text>
         <TextInput
-          style={[styles.input, errors.confirmPassword && styles.inputError]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.card,
+              color: colors.text,
+              borderColor: colors.border,
+            },
+            errors.confirmPassword && styles.inputError,
+          ]}
           value={form.confirmPassword}
           onChangeText={(text) => setForm({ ...form, confirmPassword: text })}
           placeholder="Përsëritni password-in e ri"
+          placeholderTextColor={colors.textSecondary}
           secureTextEntry
         />
         {errors.confirmPassword && (
           <Text style={styles.errorText}>{errors.confirmPassword}</Text>
         )}
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSubmit}>
+        <TouchableOpacity
+          style={[styles.saveButton, { backgroundColor: colors.tabBar }]}
+          onPress={handleSubmit}
+        >
           <Text style={styles.saveButtonText}>Ruaj Ndryshimet</Text>
         </TouchableOpacity>
       </View>
@@ -174,37 +253,32 @@ export default function EditProfile() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f2f2f2" },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#f2f2f2",
-    borderBottomColor: "#eee",
+    borderBottomWidth: 1,
   },
   title: { fontSize: 20, fontWeight: "bold" },
   content: { padding: 20, paddingBottom: 40 },
   label: {
     fontSize: 14,
-    color: "#333",
     marginTop: 16,
     marginBottom: 6,
     fontWeight: "500",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    backgroundColor: "#f9f9f9",
   },
   inputError: { borderColor: "#dc3545" },
   errorText: { color: "#dc3545", fontSize: 12, marginTop: 4 },
   saveButton: {
     marginTop: 30,
-    backgroundColor: "#023e8a",
     padding: 16,
     borderRadius: 10,
     alignItems: "center",

@@ -48,7 +48,13 @@ export default function SettingItem({
               <Text style={styles.settingValue}>{language}</Text>
             ) : (
               item.value && (
-                <Text style={styles.settingValue}>{item.value}</Text>
+                <Text style={styles.settingValue}>
+                  {item.label === "Tema"
+                    ? theme === "dark"
+                      ? "Errët"
+                      : "Dritë"
+                    : item.value}
+                </Text>
               )
             )}
             <Feather
@@ -76,9 +82,9 @@ export default function SettingItem({
       {expandedSetting === item.id && item.label === "Tema" && (
         <DropdownList
           options={themes}
-          selected={theme}
-          onSelect={(t) => {
-            setTheme(t);
+          selected={theme === "dark" ? "Errët" : "Dritë"}
+          onSelect={(selected) => {
+            setTheme(selected);
             setExpandedSetting(null);
           }}
         />
