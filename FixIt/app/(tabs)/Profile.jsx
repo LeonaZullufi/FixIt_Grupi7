@@ -20,12 +20,12 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  const [name, setName] = useState("Pa emër");
+  const [firstName, setFirstName] = useState("Duke u ngarkuar...");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
 
   const { colors } = useTheme();
 
-  // ================= Header ==================
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: "Profil",
@@ -34,11 +34,7 @@ export default function ProfileScreen() {
           onPress={() => setIsModalVisible(true)}
           style={{ marginRight: 50 }}
         >
-          <Ionicons
-            name="settings-outline"
-            size={24}
-            color={colors.tabInactive}
-          />
+          <Ionicons name="settings-outline" size={24} color={colors.text} />
         </TouchableOpacity>
       ),
       headerStyle: {
@@ -46,66 +42,113 @@ export default function ProfileScreen() {
         height: 75,
       },
       headerTitleAlign: "center",
-      color: colors.text,
+      headerTintColor: colors.text,
     });
-  }, [navigation, colors]);
+  }, [navigation, colors.tabInactive, colors.tabBar, colors.text]);
 
-  // ================= Fetch user data ==================
   useEffect(() => {
-    const user = auth.currentUser;
+    const fetchUserData = async () => {
+      const user = auth.currentUser;
 
-    if (!user) return;
+      if (!user) {
+        setFirstName("Nuk ka përdorues të kyçur");
+        setLastName("");
+        return;
+      }
 
-    setEmail(user.email);
+      setEmail(user.email || "Nuk ka email");
+      setFirstName("Duke u ngarkuar...");
 
-    // Lexo dokumentin e userit nga Firestore
-    const ref = doc(db, "users", user.uid);
+      try {
+        const docRef = doc(db, "users", user.uid);
 
-    getDoc(ref)
-      .then((snap) => {
+        const snap = await getDoc(docRef);
+
         if (snap.exists()) {
           const data = snap.data();
-          const fullName = `${data.firstName || ""} ${data.lastName || ""}`;
-          setName(fullName.trim() || "Pa emër");
+
+          const fName = data.firstName || "";
+          const lName = data.lastName || "";
+
+          setFirstName(fName || "Pa emër");
+          setLastName(lName);
         } else {
-          setName("Pa emër");
+          setFirstName("Pa emër");
+          setLastName("Dokumenti nuk ekziston");
         }
-      })
-      .catch(() => {
-        setName("Pa emër");
-      });
+      } catch (error) {
+        console.error("Gabim gjatë marrjes së dokumentit: ", error);
+        setFirstName("Gabim");
+        setLastName("(Shiko konsolën)");
+      }
+    };
+
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        fetchUserData();
+      } else {
+        setFirstName("Nuk ka përdorues të kyçur");
+        setLastName("");
+        setEmail("");
+      }
+    });
+
+    return unsubscribe;
   }, []);
 
   const stats = [
-    { id: "1", label: "Raportimet e mia", value: 28, color: "#F5A623", emoji: "📋" },
-    { id: "2", label: "Të rregulluar", value: 12, color: "#4CD964", emoji: "✅" },
+    {
+      id: "1",
+      label: "Raportimet e mia",
+      value: 28,
+      color: "#F5A623",
+      emoji: "📋",
+    },
+    {
+      id: "2",
+      label: "Të rregulluar",
+      value: 12,
+      color: "#4CD964",
+      emoji: "✅",
+    },
     { id: "3", label: "Në progres", value: 9, color: "#007AFF", emoji: "🔄" },
     { id: "4", label: "Në pritje", value: 7, color: "#FF3B30", emoji: "🕓" },
   ];
 
+  const fullName = `${firstName} ${lastName}`.trim();
+
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: colors.background }]}
+    >
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* ================= Profile Header ================= */}
           <View style={styles.profileContainer}>
-            <Ionicons name="person-circle-outline" size={90} color={colors.tabBar} />
-            <Text style={[styles.name, { color: colors.text }]}>{name}</Text>
-            <Text style={[styles.email, { color: colors.textSecondary }]}>{email}</Text>
+            <Ionicons
+              name="person-circle-outline"
+              size={90}
+              color={colors.tabBar}
+            />
+            <Text style={[styles.name, { color: colors.text }]}>
+              {fullName}
+            </Text>
+            <Text style={[styles.email, { color: colors.textSecondary }]}>
+              {email}
+            </Text>
           </View>
 
-          {/* ================= Stats ================= */}
-          <View style={[styles.statsContainer, { backgroundColor: colors.card }]}>
+          <View
+            style={[styles.statsContainer, { backgroundColor: colors.card }]}
+          >
             {stats.map((item) => (
               <SettingsCard key={item.id} item={item} />
             ))}
           </View>
         </ScrollView>
 
-        {/* ================= Settings Modal ================= */}
         <Modal
           visible={isModalVisible}
           animationType="slide"
@@ -118,7 +161,12 @@ export default function ProfileScreen() {
               { backgroundColor: colors.modalOverlay },
             ]}
           >
-            <View style={styles.modalContent}>
+            <View
+              style={[
+                styles.modalContent,
+                { backgroundColor: colors.background },
+              ]}
+            >
               <SettingsScreen onClose={() => setIsModalVisible(false)} />
             </View>
           </View>

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,10 +7,20 @@ import {
   StyleSheet,
   Keyboard,
   StatusBar,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
+import { auth, db } from "../../firebase";
+import {
+  doc,
+  getDoc,
+  collection,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+
 import AboutAppComponent from "../../components/contacts/AboutAppComponent";
 import FAQSectionComponent from "../../components/contacts/FAQSectionComponent";
 import ContactSection from "../../components/contacts/ContactSection";
@@ -21,6 +31,21 @@ export default function ContactScreen() {
   const navigation = useNavigation();
   const lastHeaderState = useRef(true);
   const { colors, theme } = useTheme();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [form, setForm] = useState({
+    name: "",
+    lastName: "",
+    email: "",
+    message: "",
+  });
+  const [errors, setErrors] = useState({});
+
+  const lastNameRef = useRef(null);
+  const emailRef = useRef(null);
+  const messageRef = useRef(null);
 
   const handleScroll = (event) => {
     const currentY = event.nativeEvent.contentOffset.y;
@@ -40,20 +65,55 @@ export default function ContactScreen() {
     }
   };
 
-  const [form, setForm] = useState({
-    name: "",
-    lastName: "",
-    email: "",
-    message: "",
-  });
-
-  const [errors, setErrors] = useState({});
-
-  const lastNameRef = useRef(null);
-  const emailRef = useRef(null);
-  const messageRef = useRef(null);
-
   const handleChange = (field, value) => setForm({ ...form, [field]: value });
+
+  useEffect(() => {
+    const fetchUserData = async (user) => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const docRef = doc(db, "users", user.uid);
+        const snap = await getDoc(docRef);
+
+        let fName = "";
+        let lName = "";
+
+        if (snap.exists()) {
+          const data = snap.data();
+          fName = data.firstName || "";
+          lName = data.lastName || "";
+        }
+
+        setForm((prevForm) => ({
+          ...prevForm,
+          name: fName,
+          lastName: lName,
+          email: user.email || "",
+        }));
+      } catch (error) {
+        console.error("Gabim gjatë marrjes së të dhënave të userit:", error);
+        setForm((prevForm) => ({
+          ...prevForm,
+          email: auth.currentUser?.email || "",
+        }));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        fetchUserData(user);
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
 
   const validateForm = () => {
     let newErrors = {};
@@ -61,27 +121,65 @@ export default function ContactScreen() {
     if (form.message.trim().length < 6)
       newErrors.message = "Mesazhi duhet të ketë të paktën 6 karaktere.";
 
-    setErrors(newErrors);
+    if (!auth.currentUser) {
+      if (!form.name.trim()) newErrors.name = "Emri kërkohet.";
+      if (!form.lastName.trim()) newErrors.lastName = "Mbiemri kërkohet.";
+      if (!form.email.trim()) newErrors.email = "Email-i kërkohet.";
+    }
 
+    setErrors(newErrors);
     return newErrors;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+
     const validationErrors = validateForm();
 
     if (Object.keys(validationErrors).length > 0) {
-      let msg = "Ju lutem korrigjoni këtë gabim:\n\n";
+      let msg = "Ju lutem korrigjoni këto gabime:\n\n";
 
+      if (validationErrors.name) msg += `• ${validationErrors.name}\n`;
+      if (validationErrors.lastName) msg += `• ${validationErrors.lastName}\n`;
+      if (validationErrors.email) msg += `• ${validationErrors.email}\n`;
       if (validationErrors.message) msg += `• ${validationErrors.message}\n`;
 
-      alert(msg);
+      Alert.alert("Gabime në Formular", msg);
       return;
     }
 
-    alert("Mesazhi juaj u dërgua me sukses!");
-    setForm({ name: "", lastName: "", email: "", message: "" });
-    setErrors({});
+    setIsSubmitting(true);
     Keyboard.dismiss();
+
+    try {
+      const messageData = {
+        name: form.name,
+        lastName: form.lastName,
+        email: form.email,
+        message: form.message,
+        timestamp: serverTimestamp(),
+        isRead: false,
+        userId: auth.currentUser ? auth.currentUser.uid : "Anonim",
+      };
+
+      await addDoc(collection(db, "messages"), messageData);
+
+      Alert.alert(
+        "Sukses!",
+        "Mesazhi juaj u dërgua me sukses. Ekipi ynë do t’ju kontaktojë së shpejti."
+      );
+
+      setForm((prevForm) => ({ ...prevForm, message: "" }));
+      setErrors({});
+    } catch (error) {
+      console.error("Gabim gjatë dërgimit të mesazhit: ", error);
+      Alert.alert(
+        "Gabim",
+        "Nuk mund të dërgohej mesazhi. Ju lutem provoni përsëri më vonë."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -127,14 +225,19 @@ export default function ContactScreen() {
                   color: colors.text,
                   borderColor: colors.border,
                 },
-                errors.name && styles.errorInput,
+                !auth.currentUser && errors.name && styles.errorInput,
               ]}
               placeholder="Emri"
               placeholderTextColor={colors.textSecondary}
               value={form.name}
               onChangeText={(text) => handleChange("name", text)}
+              editable={!auth.currentUser && !isSubmitting}
+              selectTextOnFocus={false}
               onSubmitEditing={() => lastNameRef.current?.focus()}
             />
+            {!auth.currentUser && errors.name && (
+              <Text style={styles.errorText}>{errors.name}</Text>
+            )}
 
             <TextInput
               ref={lastNameRef}
@@ -145,14 +248,19 @@ export default function ContactScreen() {
                   color: colors.text,
                   borderColor: colors.border,
                 },
-                errors.lastName && styles.errorInput,
+                !auth.currentUser && errors.lastName && styles.errorInput,
               ]}
               placeholder="Mbiemri"
               placeholderTextColor={colors.textSecondary}
               value={form.lastName}
               onChangeText={(text) => handleChange("lastName", text)}
+              editable={!auth.currentUser && !isSubmitting}
+              selectTextOnFocus={false}
               onSubmitEditing={() => emailRef.current?.focus()}
             />
+            {!auth.currentUser && errors.lastName && (
+              <Text style={styles.errorText}>{errors.lastName}</Text>
+            )}
 
             <TextInput
               ref={emailRef}
@@ -163,15 +271,20 @@ export default function ContactScreen() {
                   color: colors.text,
                   borderColor: colors.border,
                 },
-                errors.email && styles.errorInput,
+                !auth.currentUser && errors.email && styles.errorInput,
               ]}
               placeholder="Email"
               placeholderTextColor={colors.textSecondary}
               value={form.email}
               onChangeText={(text) => handleChange("email", text)}
               keyboardType="email-address"
+              editable={!auth.currentUser && !isSubmitting}
+              selectTextOnFocus={false}
               onSubmitEditing={() => messageRef.current?.focus()}
             />
+            {!auth.currentUser && errors.email && (
+              <Text style={styles.errorText}>{errors.email}</Text>
+            )}
 
             <TextInput
               ref={messageRef}
@@ -191,13 +304,24 @@ export default function ContactScreen() {
               onChangeText={(text) => handleChange("message", text)}
               multiline
               numberOfLines={4}
+              editable={!isLoading && !isSubmitting}
             />
+            {errors.message && (
+              <Text style={styles.errorText}>{errors.message}</Text>
+            )}
 
             <TouchableOpacity
               style={[styles.button, { backgroundColor: colors.tabBar }]}
               onPress={handleSubmit}
+              disabled={isLoading || isSubmitting}
             >
-              <Text style={styles.buttonText}>Dërgo Mesazhin</Text>
+              <Text style={styles.buttonText}>
+                {isLoading
+                  ? "Duke ngarkuar..."
+                  : isSubmitting
+                  ? "Duke dërguar..."
+                  : "Dërgo Mesazhin"}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -259,5 +383,12 @@ const styles = StyleSheet.create({
   errorInput: {
     borderWidth: 2,
     borderColor: "red",
+  },
+  errorText: {
+    color: "red",
+    fontSize: 12,
+    marginTop: -8,
+    marginBottom: 12,
+    marginLeft: 5,
   },
 });

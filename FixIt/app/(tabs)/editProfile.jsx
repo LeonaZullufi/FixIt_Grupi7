@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,10 +12,20 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useTheme } from "../../context/themeContext";
+import { auth, db } from "../../firebase";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import {
+  updateEmail,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+} from "firebase/auth";
 
 export default function EditProfile() {
   const router = useRouter();
   const { colors } = useTheme();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     firstName: "",
@@ -26,14 +36,68 @@ export default function EditProfile() {
     confirmPassword: "",
   });
 
+  const [initialForm, setInitialForm] = useState(null);
   const [errors, setErrors] = useState({});
 
-  const ACTUAL_PASSWORD = "123456";
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const user = auth.currentUser;
+      if (!user) {
+        Alert.alert("Gabim", "Nuk ka përdorues të kyçur.");
+        router.replace("/Login");
+        return;
+      }
+
+      try {
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+
+        let fName = "";
+        let lName = "";
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          fName = data.firstName || "";
+          lName = data.lastName || "";
+        }
+
+        const initialData = {
+          firstName: fName,
+          lastName: lName,
+          email: user.email || "",
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        };
+
+        setForm(initialData);
+        setInitialForm(initialData);
+      } catch (error) {
+        console.error("Gabim gjatë marrjes së dokumentit: ", error);
+        Alert.alert("Gabim", "Nuk mund të ngarkoheshin të dhënat e profilit.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  const handleChange = (field, value) => setForm({ ...form, [field]: value });
 
   const validateForm = () => {
     let newErrors = {};
     const nameRegex = /^[A-Za-zÀ-ž\s]+$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!initialForm) return {};
+
+    const emailChanged = form.email !== initialForm.email;
+    const passwordChanged = form.newPassword.length > 0;
+    const dataChanged =
+      form.firstName !== initialForm.firstName ||
+      form.lastName !== initialForm.lastName;
+    const requiresPassword = emailChanged || passwordChanged || dataChanged;
 
     if (!form.firstName.trim())
       newErrors.firstName = "Emri është i detyrueshëm.";
@@ -49,22 +113,26 @@ export default function EditProfile() {
     else if (!emailRegex.test(form.email))
       newErrors.email = "Email nuk është në format të saktë.";
 
-    if (!form.currentPassword)
-      newErrors.currentPassword = "Shkruani password-in aktual.";
-    else if (form.currentPassword !== ACTUAL_PASSWORD)
-      newErrors.currentPassword = "Password-i aktual është i pasaktë.";
+    if (requiresPassword && !form.currentPassword) {
+      newErrors.currentPassword = "Password-i aktual kërkohet për ruajtje.";
+    }
 
-    if (form.newPassword && form.newPassword.length < 6)
-      newErrors.newPassword =
-        "Password-i i ri duhet të ketë të paktën 6 karaktere.";
-    if (form.newPassword && form.newPassword !== form.confirmPassword)
-      newErrors.confirmPassword = "Password-et nuk përputhen.";
+    if (passwordChanged) {
+      if (form.newPassword.length < 6)
+        newErrors.newPassword =
+          "Password-i i ri duhet të ketë të paktën 6 karaktere.";
+
+      if (form.newPassword !== form.confirmPassword)
+        newErrors.confirmPassword = "Password-et e reja nuk përputhen.";
+    }
 
     setErrors(newErrors);
     return newErrors;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (isLoading || isSubmitting) return;
+
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
       let msg = "Ju lutem korrigjoni këto gabime:\n\n";
@@ -75,10 +143,107 @@ export default function EditProfile() {
       return;
     }
 
-    Alert.alert("Sukses", "Profili u përditësua me sukses!");
+    setIsSubmitting(true);
     Keyboard.dismiss();
-    router.replace("/Profile");
+    const user = auth.currentUser;
+    if (!user || !initialForm) {
+      setIsSubmitting(false);
+      return;
+    }
+
+    const emailChanged = form.email !== initialForm.email;
+    const passwordChanged = form.newPassword.length > 0;
+    const profileDataChanged =
+      form.firstName !== initialForm.firstName ||
+      form.lastName !== initialForm.lastName;
+    const requiresReauth = emailChanged || passwordChanged;
+
+    try {
+      if (requiresReauth) {
+        const credential = EmailAuthProvider.credential(
+          user.email,
+          form.currentPassword
+        );
+        await reauthenticateWithCredential(user, credential);
+      }
+
+      if (emailChanged) {
+        await updateEmail(user, form.email);
+      }
+
+      if (passwordChanged) {
+        await updatePassword(user, form.newPassword);
+      }
+
+      if (profileDataChanged) {
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, {
+          firstName: form.firstName,
+          lastName: form.lastName,
+        });
+      }
+
+      Alert.alert("Sukses", "Profili u përditësua me sukses!");
+
+      setInitialForm((prev) => ({
+        ...form,
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      }));
+      setForm((prev) => ({
+        ...prev,
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      }));
+
+      router.replace("/Profile");
+    } catch (error) {
+      console.error("Gabim gjatë ruajtjes së profilit:", error);
+
+      let errorMessage =
+        "Gabim gjatë ruajtjes së profilit. Ju lutem provoni përsëri.";
+
+      if (
+        error.code === "auth/wrong-password" ||
+        error.code === "auth/invalid-credential"
+      ) {
+        errorMessage =
+          "Password-i aktual është i pasaktë. Ju lutem shkruani password-in tuaj aktual.";
+      } else if (error.code === "auth/email-already-in-use") {
+        errorMessage =
+          "Ky email është tashmë në përdorim nga një tjetër llogari.";
+      } else if (error.code === "auth/weak-password") {
+        errorMessage =
+          "Password-i i ri është shumë i dobët. Përdorni të paktën 6 karaktere.";
+      } else if (error.code === "auth/requires-recent-login") {
+        errorMessage =
+          "Kërkohet ri-kyçje e fundit. Përpara se të ndryshoni informacione sensitive, ju lutem dilni dhe kyçuni sërish.";
+      }
+
+      Alert.alert("Gabim", errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: colors.background,
+            justifyContent: "center",
+            alignItems: "center",
+          },
+        ]}
+      >
+        <Text style={{ color: colors.text }}>Duke ngarkuar të dhënat...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAwareScrollView
@@ -120,9 +285,10 @@ export default function EditProfile() {
             errors.firstName && styles.inputError,
           ]}
           value={form.firstName}
-          onChangeText={(text) => setForm({ ...form, firstName: text })}
+          onChangeText={(text) => handleChange("firstName", text)}
           placeholder="Shkruani emrin"
           placeholderTextColor={colors.textSecondary}
+          editable={!isSubmitting}
         />
         {errors.firstName && (
           <Text style={styles.errorText}>{errors.firstName}</Text>
@@ -142,9 +308,10 @@ export default function EditProfile() {
             errors.lastName && styles.inputError,
           ]}
           value={form.lastName}
-          onChangeText={(text) => setForm({ ...form, lastName: text })}
+          onChangeText={(text) => handleChange("lastName", text)}
           placeholder="Shkruani mbiemrin"
           placeholderTextColor={colors.textSecondary}
+          editable={!isSubmitting}
         />
         {errors.lastName && (
           <Text style={styles.errorText}>{errors.lastName}</Text>
@@ -164,16 +331,17 @@ export default function EditProfile() {
             errors.email && styles.inputError,
           ]}
           value={form.email}
-          onChangeText={(text) => setForm({ ...form, email: text })}
+          onChangeText={(text) => handleChange("email", text)}
           placeholder="email@example.com"
           placeholderTextColor={colors.textSecondary}
           keyboardType="email-address"
           autoCapitalize="none"
+          editable={!isSubmitting}
         />
         {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
         <Text style={[styles.label, { color: colors.textSecondary }]}>
-          Password aktual (për siguri)
+          Password aktual (për ruajtje)
         </Text>
         <TextInput
           style={[
@@ -186,10 +354,11 @@ export default function EditProfile() {
             errors.currentPassword && styles.inputError,
           ]}
           value={form.currentPassword}
-          onChangeText={(text) => setForm({ ...form, currentPassword: text })}
+          onChangeText={(text) => handleChange("currentPassword", text)}
           placeholder="Shkruani password-in aktual"
           placeholderTextColor={colors.textSecondary}
           secureTextEntry
+          editable={!isSubmitting}
         />
         {errors.currentPassword && (
           <Text style={styles.errorText}>{errors.currentPassword}</Text>
@@ -209,10 +378,11 @@ export default function EditProfile() {
             errors.newPassword && styles.inputError,
           ]}
           value={form.newPassword}
-          onChangeText={(text) => setForm({ ...form, newPassword: text })}
+          onChangeText={(text) => handleChange("newPassword", text)}
           placeholder="Lëreni bosh nëse nuk doni të ndryshoni"
           placeholderTextColor={colors.textSecondary}
           secureTextEntry
+          editable={!isSubmitting}
         />
         {errors.newPassword && (
           <Text style={styles.errorText}>{errors.newPassword}</Text>
@@ -232,10 +402,11 @@ export default function EditProfile() {
             errors.confirmPassword && styles.inputError,
           ]}
           value={form.confirmPassword}
-          onChangeText={(text) => setForm({ ...form, confirmPassword: text })}
+          onChangeText={(text) => handleChange("confirmPassword", text)}
           placeholder="Përsëritni password-in e ri"
           placeholderTextColor={colors.textSecondary}
           secureTextEntry
+          editable={!isSubmitting}
         />
         {errors.confirmPassword && (
           <Text style={styles.errorText}>{errors.confirmPassword}</Text>
@@ -244,8 +415,11 @@ export default function EditProfile() {
         <TouchableOpacity
           style={[styles.saveButton, { backgroundColor: colors.tabBar }]}
           onPress={handleSubmit}
+          disabled={isSubmitting}
         >
-          <Text style={styles.saveButtonText}>Ruaj Ndryshimet</Text>
+          <Text style={styles.saveButtonText}>
+            {isSubmitting ? "Duke ruajtur..." : "Ruaj Ndryshimet"}
+          </Text>
         </TouchableOpacity>
       </View>
     </KeyboardAwareScrollView>
