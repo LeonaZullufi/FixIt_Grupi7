@@ -278,7 +278,7 @@ export default function ReportScreen() {
               <Marker
                 key={r.id}
                 coordinate={{ latitude: r.latitude, longitude: r.longitude }}
-                pinColor="red"
+                pinColor={r.finished ? "green" : "red"} // <-- NGJYRA SIPAS STATUSIT
                 onPress={() => {
                   setOpenedReport(r);
                   setEditDescription(r.description);
