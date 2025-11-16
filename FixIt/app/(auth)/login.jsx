@@ -30,7 +30,7 @@ WebBrowser.maybeCompleteAuthSession();
 const WEB_CLIENT_ID =
   "483051599257-96qp4md9nulbifqt7l0iedv0qf31ebt4.apps.googleusercontent.com";
 
-const ADMIN_EMAIL = "admin@gmail.com"; // 👉 i njëjti si te register
+const ADMIN_EMAIL = "admin@gmail.com"; // i njëjti si te register
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -45,11 +45,7 @@ const Login = () => {
     }),
   });
 
-
-router.replace("/");
-
-
-  // 🎯 handle Google response për MOBILE
+  // 🔁 Pasi të kthehet nga Google (MOBILE) – krijo user doc nëse duhet, pastaj shko te "/"
   useEffect(() => {
     const handleGoogleLogin = async () => {
       if (response?.type !== "success") return;
@@ -64,11 +60,8 @@ router.replace("/");
         const userRef = doc(db, "users", user.uid);
         const snap = await getDoc(userRef);
 
-        let role = "user";
-
         if (!snap.exists()) {
-          // nëse s'ka dokument → krijo si user ose admin
-          role =
+          const role =
             user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
               ? "admin"
               : "user";
@@ -81,11 +74,10 @@ router.replace("/");
             status: "active",
             createdAt: Date.now(),
           });
-        } else {
-          role = snap.data().role || "user";
         }
 
-        navigateByRole(role);
+        // ✅ Tani leje që gate-i te app/index.jsx ta gjejë rolin
+        router.replace("/");
       } catch (err) {
         console.log("Google login error:", err);
         setError("Gabim gjatë kyçjes me Google.");
@@ -118,13 +110,8 @@ router.replace("/");
       const userRef = doc(db, "users", uid);
       const snap = await getDoc(userRef);
 
-      let role = "user";
-
-      if (snap.exists()) {
-        role = snap.data().role || "user";
-      } else {
-        // nëse për ndonjë arsye nuk ekziston dokumenti → krijo tani
-        role =
+      if (!snap.exists()) {
+        const role =
           email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()
             ? "admin"
             : "user";
@@ -139,7 +126,8 @@ router.replace("/");
         });
       }
 
-      navigateByRole(role);
+      // ✅ Pasi u kyçe, shko te "/" – gate e bën ndarjen admin/user
+      router.replace("/");
     } catch (err) {
       console.log("Email login error:", err);
       setError("Email ose fjalëkalim gabim.");
@@ -164,10 +152,8 @@ router.replace("/");
         const userRef = doc(db, "users", user.uid);
         const snap = await getDoc(userRef);
 
-        let role = "user";
-
         if (!snap.exists()) {
-          role =
+          const role =
             user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
               ? "admin"
               : "user";
@@ -180,13 +166,11 @@ router.replace("/");
             status: "active",
             createdAt: Date.now(),
           });
-        } else {
-          role = snap.data().role || "user";
         }
 
-        navigateByRole(role);
+        router.replace("/");
       } else {
-        // MOBILE: expo-auth-session (pjesa tjetër trajtohet në useEffect)
+        // MOBILE: hapet browseri, përgjigja vazhdon në useEffect më lart
         await promptAsync();
       }
     } catch (err) {
@@ -261,7 +245,6 @@ router.replace("/");
 
 export default Login;
 
-// ⬇️⬇️ KËTU ISHIN DUKE MUNGUAR STYLES
 const styles = StyleSheet.create({
   container: {
     flex: 1,
