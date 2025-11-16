@@ -24,22 +24,21 @@ export default function SettingsScreen({ onClose }) {
       type: "button",
       isProfile: true,
     },
-    { id: "2", icon: "globe", label: "Gjuha", value: language, type: "button" },
     {
-      id: "3",
+      id: "2",
       icon: "moon",
       label: "Tema",
       value: appTheme === "dark" ? "Errët" : "Dritë",
       type: "button",
     },
     {
-      id: "4",
+      id: "3",
       icon: "bell",
       label: "Njoftimet",
       value: notifications,
       type: "switch",
     },
-    { id: "5", label: "Dil", icon: "log-out", type: "button", isLogout: true },
+    { id: "4", label: "Dil", icon: "log-out", type: "button", isLogout: true },
   ];
 
   const handleSettingPress = (item) => {
