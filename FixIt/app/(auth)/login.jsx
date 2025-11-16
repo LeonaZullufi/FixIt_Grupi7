@@ -17,17 +17,20 @@ import {
   signInWithPopup,
 } from "firebase/auth";
 
-import { auth } from "../../firebase";
+import { auth, db } from "../../firebase";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import * as AuthSession from "expo-auth-session";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 WebBrowser.maybeCompleteAuthSession();
 
-// WEB CLIENT ID nga Google Cloud (Web application OAuth client)
+// WEB CLIENT ID
 const WEB_CLIENT_ID =
   "483051599257-96qp4md9nulbifqt7l0iedv0qf31ebt4.apps.googleusercontent.com";
+
+const ADMIN_EMAIL = "admin@gmail.com"; // i njëjti si te register
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -35,7 +38,6 @@ const Login = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ⬇️ HAPI I RËNDËSISHËM: hook-u BRENDA komponentit
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: WEB_CLIENT_ID,
     redirectUri: AuthSession.makeRedirectUri({
@@ -43,7 +45,7 @@ const Login = () => {
     }),
   });
 
-  // 🎯 handle Google response për ANDROID / iOS (expo-auth-session)
+  // 🔁 Pasi të kthehet nga Google (MOBILE) – krijo user doc nëse duhet, pastaj shko te "/"
   useEffect(() => {
     const handleGoogleLogin = async () => {
       if (response?.type !== "success") return;
@@ -52,7 +54,29 @@ const Login = () => {
       try {
         const { id_token } = response.params;
         const credential = GoogleAuthProvider.credential(id_token);
-        await signInWithCredential(auth, credential);
+        const result = await signInWithCredential(auth, credential);
+
+        const user = result.user;
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+
+        if (!snap.exists()) {
+          const role =
+            user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
+              ? "admin"
+              : "user";
+
+          await setDoc(userRef, {
+            firstName: user.displayName || "",
+            lastName: "",
+            email: user.email.toLowerCase(),
+            role,
+            status: "active",
+            createdAt: Date.now(),
+          });
+        }
+
+        // ✅ Tani leje që gate-i te app/index.jsx ta gjejë rolin
         router.replace("/");
       } catch (err) {
         console.log("Google login error:", err);
@@ -76,17 +100,34 @@ const Login = () => {
 
     setLoading(true);
     try {
-      const user = await signInWithEmailAndPassword(
+      const cred = await signInWithEmailAndPassword(
         auth,
         email.trim(),
         password
       );
 
-      if (email.trim() === "admin@gmail.com") {
-        router.replace("/(admin)/AdminDashboard");
-      } else {
-        router.replace("/");
+      const uid = cred.user.uid;
+      const userRef = doc(db, "users", uid);
+      const snap = await getDoc(userRef);
+
+      if (!snap.exists()) {
+        const role =
+          email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()
+            ? "admin"
+            : "user";
+
+        await setDoc(userRef, {
+          firstName: "",
+          lastName: "",
+          email: email.trim().toLowerCase(),
+          role,
+          status: "active",
+          createdAt: Date.now(),
+        });
       }
+
+      // ✅ Pasi u kyçe, shko te "/" – gate e bën ndarjen admin/user
+      router.replace("/");
     } catch (err) {
       console.log("Email login error:", err);
       setError("Email ose fjalëkalim gabim.");
@@ -105,12 +146,32 @@ const Login = () => {
       if (Platform.OS === "web") {
         // WEB: Firebase signInWithPopup
         const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider);
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+
+        if (!snap.exists()) {
+          const role =
+            user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
+              ? "admin"
+              : "user";
+
+          await setDoc(userRef, {
+            firstName: user.displayName || "",
+            lastName: "",
+            email: user.email.toLowerCase(),
+            role,
+            status: "active",
+            createdAt: Date.now(),
+          });
+        }
+
         router.replace("/");
       } else {
-        // MOBILE (Android/iOS): expo-auth-session
+        // MOBILE: hapet browseri, përgjigja vazhdon në useEffect më lart
         await promptAsync();
-        // përgjigjen e trajton useEffect më lart
       }
     } catch (err) {
       console.log("Google login error:", err);
