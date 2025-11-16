@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,10 +11,22 @@ import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../context/themeContext";
 import bannerImage from "../../assets/explore.png";
 
+// 🔹 Firebase
+import { auth, db } from "../../firebase";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+
 const ExploreScreen = () => {
   const navigation = useNavigation();
   const lastHeaderState = useRef(true);
   const { colors, theme } = useTheme();
+
+  const [stats, setStats] = useState({
+    solved: 0,
+    pending: 0,
+    mine: 0,
+    activeUsers: 0,
+    loading: true,
+  });
 
   const handleScroll = (event) => {
     const currentY = event.nativeEvent.contentOffset.y;
@@ -33,26 +45,81 @@ const ExploreScreen = () => {
     }
   };
 
-  const stats = [
+  // 🔁 Lexo statistikat nga Firestore
+  useEffect(() => {
+    const user = auth.currentUser;
+    const userEmail = user?.email ?? null;
+
+    // 1) RAPORTET
+    const reportsRef = collection(db, "reports");
+    const unsubReports = onSnapshot(reportsRef, (snap) => {
+      let solved = 0;
+      let pending = 0;
+      let mine = 0;
+
+      snap.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.finished) solved++;
+        else pending++;
+
+        if (userEmail && data.userEmail === userEmail) {
+          mine++;
+        }
+      });
+
+      setStats((prev) => ({
+        ...prev,
+        solved,
+        pending,
+        mine,
+        loading: false,
+      }));
+    });
+
+    // 2) USERAT AKTIVË nga koleksioni "users"
+    const usersRef = collection(db, "users");
+    const qActive = query(usersRef, where("status", "==", "active"));
+
+    const unsubUsers = onSnapshot(qActive, (snap) => {
+      setStats((prev) => ({
+        ...prev,
+        activeUsers: snap.size,
+      }));
+    });
+
+    return () => {
+      unsubReports();
+      unsubUsers();
+    };
+  }, []);
+
+  // kartat që i shfaqim në UI
+  const cards = [
     {
       id: 1,
       label: "Probleme të zgjidhura",
-      value: 124,
+      value: stats.solved,
       color: "#27B4E2",
       emoji: "✅",
     },
-    { id: 2, label: "Në pritje", value: 37, color: "#FF6663", emoji: "🕓" },
+    {
+      id: 2,
+      label: "Në pritje",
+      value: stats.pending,
+      color: "#FF6663",
+      emoji: "🕓",
+    },
     {
       id: 3,
       label: "Në lagjen tënde",
-      value: 12,
+      value: stats.mine,
       color: "#003F91",
       emoji: "📍",
     },
     {
       id: 4,
       label: "Përdorues aktivë",
-      value: 45,
+      value: stats.activeUsers,
       color: "#2D2D2D",
       emoji: "👥",
     },
@@ -79,10 +146,15 @@ const ExploreScreen = () => {
           <Text style={[styles.welcome, { color: colors.text }]}>
             Mirë se erdhe!
           </Text>
+          {!stats.loading && (
+            <Text style={{ color: colors.text }}>
+              Ke raportuar {stats.mine} probleme në lagjen tënde ✨
+            </Text>
+          )}
         </View>
 
         <View style={styles.cardContainer}>
-          {stats.map((item) => (
+          {cards.map((item) => (
             <View
               key={item.id}
               style={[styles.card, { backgroundColor: item.color }]}
@@ -90,12 +162,16 @@ const ExploreScreen = () => {
               <Text style={styles.cardTitle}>
                 {item.emoji} {item.label}
               </Text>
-              <Text style={styles.cardValue}>{item.value}</Text>
+              <Text style={styles.cardValue}>
+                {stats.loading ? "…" : item.value}
+              </Text>
             </View>
           ))}
         </View>
 
-        <View style={[styles.successSection, { backgroundColor: colors.card }]}>
+        <View
+          style={[styles.successSection, { backgroundColor: colors.card }]}
+        >
           <Text style={[styles.successTitle, { color: colors.text }]}>
             Sukseset e fundit
           </Text>
