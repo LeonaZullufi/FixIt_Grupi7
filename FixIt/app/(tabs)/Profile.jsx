@@ -34,7 +34,7 @@ export default function ProfileScreen() {
           onPress={() => setIsModalVisible(true)}
           style={{ marginRight: 50 }}
         >
-          <Ionicons name="settings-outline" size={24} color={colors.text} />
+          <Ionicons name="settings-outline" size={24} color={"white"} />
         </TouchableOpacity>
       ),
       headerStyle: {
@@ -42,7 +42,7 @@ export default function ProfileScreen() {
         height: 75,
       },
       headerTitleAlign: "center",
-      headerTintColor: colors.text,
+      headerTintColor: "white",
     });
   }, [navigation, colors.tabInactive, colors.tabBar, colors.text]);
 
@@ -218,5 +218,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: "100%",
+  },
+  fontHeader: {
+    color: "#fff",
   },
 });
