@@ -12,17 +12,20 @@ import { Ionicons } from "@expo/vector-icons";
 import SettingsCard from "../../components/settings/SettingsCard";
 import SettingsScreen from "../../components/settings/SettingsScreen";
 import { useNavigation } from "expo-router";
-import { auth } from "../../firebase";
+import { auth, db } from "../../firebase";
+import { doc, getDoc } from "firebase/firestore";
 import { useTheme } from "../../context/themeContext";
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [name, setName] = useState("");
+
+  const [name, setName] = useState("Pa emër");
   const [email, setEmail] = useState("");
 
   const { colors } = useTheme();
 
+  // ================= Header ==================
   useLayoutEffect(() => {
     navigation.setOptions({
       headerTitle: "Profil",
@@ -47,64 +50,62 @@ export default function ProfileScreen() {
     });
   }, [navigation, colors]);
 
+  // ================= Fetch user data ==================
   useEffect(() => {
     const user = auth.currentUser;
 
-    if (user) {
-      setEmail(user.email);
-      setName(user.displayName ?? "Pa emër");
-    }
+    if (!user) return;
+
+    setEmail(user.email);
+
+    // Lexo dokumentin e userit nga Firestore
+    const ref = doc(db, "users", user.uid);
+
+    getDoc(ref)
+      .then((snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const fullName = `${data.firstName || ""} ${data.lastName || ""}`;
+          setName(fullName.trim() || "Pa emër");
+        } else {
+          setName("Pa emër");
+        }
+      })
+      .catch(() => {
+        setName("Pa emër");
+      });
   }, []);
 
   const stats = [
-    {
-      id: "1",
-      label: "Raportimet e mia",
-      value: 28,
-      color: "#F5A623",
-      emoji: "📋",
-    },
-    {
-      id: "2",
-      label: "Të rregulluar",
-      value: 12,
-      color: "#4CD964",
-      emoji: "✅",
-    },
+    { id: "1", label: "Raportimet e mia", value: 28, color: "#F5A623", emoji: "📋" },
+    { id: "2", label: "Të rregulluar", value: 12, color: "#4CD964", emoji: "✅" },
     { id: "3", label: "Në progres", value: 9, color: "#007AFF", emoji: "🔄" },
     { id: "4", label: "Në pritje", value: 7, color: "#FF3B30", emoji: "🕓" },
   ];
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: colors.background }]}
-    >
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* ================= Profile Header ================= */}
           <View style={styles.profileContainer}>
-            <Ionicons
-              name="person-circle-outline"
-              size={90}
-              color={colors.tabBar}
-            />
+            <Ionicons name="person-circle-outline" size={90} color={colors.tabBar} />
             <Text style={[styles.name, { color: colors.text }]}>{name}</Text>
-            <Text style={[styles.email, { color: colors.textSecondary }]}>
-              {email}
-            </Text>
+            <Text style={[styles.email, { color: colors.textSecondary }]}>{email}</Text>
           </View>
 
-          <View
-            style={[styles.statsContainer, { backgroundColor: colors.card }]}
-          >
+          {/* ================= Stats ================= */}
+          <View style={[styles.statsContainer, { backgroundColor: colors.card }]}>
             {stats.map((item) => (
               <SettingsCard key={item.id} item={item} />
             ))}
           </View>
         </ScrollView>
 
+        {/* ================= Settings Modal ================= */}
         <Modal
           visible={isModalVisible}
           animationType="slide"

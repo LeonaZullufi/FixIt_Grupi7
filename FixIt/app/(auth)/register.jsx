@@ -1,18 +1,23 @@
+import React, { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { useState } from "react";
-import { auth } from "../../firebase";
+import { auth, db } from "../../firebase";
 import {
   TextInput,
   View,
   Text,
   StyleSheet,
-  Image,
   TouchableOpacity,
   Modal,
+  Image,
 } from "react-native";
 import { router } from "expo-router";
+import { doc, setDoc } from "firebase/firestore";
+
+const ADMIN_EMAIL = "admin@gmail.com"; // 👉 vendose emailin e adminit këtu
 
 const Register = () => {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -22,6 +27,8 @@ const Register = () => {
 
   const validateInputs = () => {
     if (
+      firstName.trim() === "" ||
+      lastName.trim() === "" ||
       email.trim() === "" ||
       password.trim() === "" ||
       confirmPassword.trim() === ""
@@ -54,7 +61,29 @@ const Register = () => {
     setLoading(true);
 
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      // 1) Firebase Auth
+      const cred = await createUserWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
+      const uid = cred.user.uid;
+
+      // 2) Gjej rolin sipas emailit
+      const role = email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()
+        ? "admin"
+        : "user";
+
+      // 3) Krijo dokumentin users/{uid}
+      await setDoc(doc(db, "users", uid), {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim().toLowerCase(),
+        role,
+        status: "active",
+        createdAt: Date.now(),
+      });
+
       setModalVisible(true);
     } catch (error) {
       console.log("error", error);
@@ -70,21 +99,32 @@ const Register = () => {
 
   const handleModalClose = () => {
     setModalVisible(false);
-    router.push("/login");
+    router.push("/(auth)/login");
   };
 
   return (
-     <View style={styles.container}>
-         <Image
-     source={require("../../assets/FixIt.png")}
-     style={styles.logo}
-   />
-   
+    <View style={styles.container}>
+      <Image
+        source={require("../../assets/FixIt.png")}
+        style={styles.logo}
+      />
+
       <Text style={styles.title}>Create an account</Text>
 
       <TextInput
+        placeholder="First name"
+        value={firstName}
+        onChangeText={setFirstName}
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="Last name"
+        value={lastName}
+        onChangeText={setLastName}
+        style={styles.input}
+      />
+      <TextInput
         placeholder="Email"
-        placeholderTextColor="#999"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -92,7 +132,6 @@ const Register = () => {
       />
       <TextInput
         placeholder="Password"
-        placeholderTextColor="#999"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -100,12 +139,12 @@ const Register = () => {
       />
       <TextInput
         placeholder="Confirm Password"
-        placeholderTextColor="#999"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
-        style={styles.input}
         secureTextEntry
+        style={styles.input}
       />
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <TouchableOpacity style={styles.btn} onPress={handleSignup}>
@@ -114,7 +153,7 @@ const Register = () => {
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push("/login")}>
+      <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
         <Text style={styles.link}>Already have an account? Log In</Text>
       </TouchableOpacity>
 
@@ -137,21 +176,20 @@ const Register = () => {
 export default Register;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 20, },
+  container: { flex: 1, justifyContent: "center", padding: 20, backgroundColor: "#fff" },
+  logo: {
+    width: 140,
+    height: 140,
+    resizeMode: "contain",
+    alignSelf: "center",
+    marginBottom: 20,
+  },
   title: {
     fontSize: 26,
     fontWeight: "bold",
     marginBottom: 25,
     textAlign: "center",
   },
-  logo: {
-  width: 140,
-  height: 140,
-  resizeMode: "contain",
-  alignSelf: "center",
-  marginBottom: 20,
-},
-
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
@@ -177,7 +215,6 @@ const styles = StyleSheet.create({
   modalBox: {
     backgroundColor: "white",
     borderRadius: 8,
-    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
     justifyContent: "space-around",
     alignItems: "center",
     padding: 20,
