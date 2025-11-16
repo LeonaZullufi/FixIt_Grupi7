@@ -14,8 +14,7 @@ import {
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useNavigation } from "expo-router";
-
-// FIREBASE
+import { useTheme } from "../../context/themeContext";
 import { auth, db } from "../../firebase";
 import {
   collection,
@@ -28,7 +27,6 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
-// ===================== Reverse Geocoding =====================
 async function getAddressFromCoords(lat, lng) {
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=sq`;
@@ -44,22 +42,15 @@ async function getAddressFromCoords(lat, lng) {
 
 export default function ReportScreen() {
   const navigation = useNavigation();
-
-  // ===================== FORM STATE =====================
+  const { colors } = useTheme();
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [description, setDescription] = useState("");
   const [pinLocation, setPinLocation] = useState(null);
   const [placeName, setPlaceName] = useState("");
-
-  // ===================== DATA STATE =====================
   const [reports, setReports] = useState([]);
   const [openedReport, setOpenedReport] = useState(null);
-
-  // ===================== EDIT STATE =====================
   const [editDescription, setEditDescription] = useState("");
   const [editPhoto, setEditPhoto] = useState(null);
-
-  // ===================== UI STATE =====================
   const [photoPickerVisible, setPhotoPickerVisible] = useState(false);
   const [editPhotoVisible, setEditPhotoVisible] = useState(false);
 
@@ -68,7 +59,6 @@ export default function ReportScreen() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // TIMER FOR NOTIFICATIONS
   useEffect(() => {
     if (errorMessage || successMessage) {
       const timer = setTimeout(() => {
@@ -79,7 +69,6 @@ export default function ReportScreen() {
     }
   }, [errorMessage, successMessage]);
 
-  // ===================== LOCAL PHOTOS =====================
   const photos = [
     require("../../assets/ProblemOnMap/Gropa1.png"),
     require("../../assets/ProblemOnMap/Gropa2Prizren.jpg"),
@@ -98,7 +87,6 @@ export default function ReportScreen() {
     "KanalizimNeRruge.jpg",
   ];
 
-  // ===================== HEADER =====================
   useLayoutEffect(() => {
     navigation.setOptions({
       title: "FixIt",
@@ -107,8 +95,6 @@ export default function ReportScreen() {
       headerTintColor: "white",
     });
   }, []);
-
-  // ===================== GET USER REPORTS =====================
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return setLoadingReports(false);
@@ -133,14 +119,12 @@ export default function ReportScreen() {
     return () => unsub();
   }, []);
 
-  // ===================== PLACE PIN =====================
   const placePin = async (e) => {
     const { latitude, longitude } = e.nativeEvent.coordinate;
     setPinLocation({ latitude, longitude });
     setPlaceName(await getAddressFromCoords(latitude, longitude));
   };
 
-  // ===================== SEND REPORT =====================
   const sendReport = async () => {
     if (!pinLocation || !selectedPhoto || !description.trim()) {
       return setErrorMessage("Plotëso foton, vendin dhe përshkrimin!");
@@ -176,8 +160,6 @@ export default function ReportScreen() {
       setLoading(false);
     }
   };
-
-  // ===================== DELETE REPORT =====================
   const deleteReport = async (id) => {
     setLoading(true);
     try {
@@ -191,7 +173,6 @@ export default function ReportScreen() {
     }
   };
 
-  // ===================== UPDATE REPORT =====================
   const updateReport = async (id) => {
     setLoading(true);
 
@@ -214,7 +195,6 @@ export default function ReportScreen() {
     }
   };
 
-  // ===================== RETURN PHOTO BY NAME =====================
   function getPhotoByName(name) {
     switch (name) {
       case "Gropa1.png":
@@ -233,8 +213,6 @@ export default function ReportScreen() {
         return require("../../assets/ProblemOnMap/Gropa1.png");
     }
   }
-
-  // ===================== UI =====================
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -242,10 +220,12 @@ export default function ReportScreen() {
       keyboardVerticalOffset={80}
     >
       <ScrollView
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: colors.background }}
         contentContainerStyle={{ paddingBottom: 150 }}
       >
-        <View style={styles.container}>
+        <View
+          style={[styles.container, { backgroundColor: colors.background }]}
+        >
           <Text style={styles.title}>Raporto një problem</Text>
 
           {/* STATUS */}
@@ -278,7 +258,7 @@ export default function ReportScreen() {
               <Marker
                 key={r.id}
                 coordinate={{ latitude: r.latitude, longitude: r.longitude }}
-                pinColor={r.finished ? "green" : "red"} // <-- NGJYRA SIPAS STATUSIT
+                pinColor={r.finished ? "green" : "red"}
                 onPress={() => {
                   setOpenedReport(r);
                   setEditDescription(r.description);
@@ -325,7 +305,12 @@ export default function ReportScreen() {
 
           {/* PHOTO PICKER MODAL */}
           <Modal visible={photoPickerVisible} transparent animationType="slide">
-            <View style={styles.photoModal}>
+            <View
+              style={[
+                styles.photoModal,
+                { backgroundColor: colors.modalBackground },
+              ]}
+            >
               <Text style={styles.modalTitle}>Zgjidh Foto</Text>
 
               <ScrollView horizontal>
@@ -354,8 +339,16 @@ export default function ReportScreen() {
           {/* DETAILS MODAL */}
           <Modal visible={openedReport !== null} animationType="slide">
             {openedReport && (
-              <ScrollView contentContainerStyle={styles.modalScroll}>
-                <View style={styles.modalContent}>
+              <ScrollView
+                style={{ backgroundColor: colors.modalBackground }}
+                contentContainerStyle={styles.modalScroll}
+              >
+                <View
+                  style={[
+                    styles.modalContent,
+                    { backgroundColor: colors.modalBackground },
+                  ]}
+                >
                   <Image
                     source={getPhotoByName(openedReport.photoName)}
                     style={styles.modalImage}
@@ -372,7 +365,15 @@ export default function ReportScreen() {
                   </Text>
 
                   <TextInput
-                    style={styles.editInput}
+                    style={[
+                      styles.input,
+                      {
+                        minHeight: 60,
+                        backgroundColor: colors.card,
+                        color: colors.text,
+                        borderColor: colors.border,
+                      },
+                    ]}
                     value={editDescription}
                     onChangeText={setEditDescription}
                     multiline
@@ -411,11 +412,23 @@ export default function ReportScreen() {
           </Modal>
 
           {/* EDIT PHOTO MODAL */}
-          <Modal visible={editPhotoVisible} animationType="slide">
-            <View style={styles.photoModal}>
+          <Modal
+            visible={editPhotoVisible}
+            animationType="slide"
+            transparent={true}
+          >
+            <View
+              style={[
+                styles.photoModal,
+                { backgroundColor: colors.modalBackground },
+              ]}
+            >
               <Text style={styles.modalTitle}>Ndrysho Fotën</Text>
 
-              <ScrollView horizontal>
+              <ScrollView
+                horizontal
+                style={{ backgroundColor: colors.modalBackground }}
+              >
                 {photos.map((p, index) => (
                   <TouchableOpacity
                     key={index}
@@ -443,7 +456,6 @@ export default function ReportScreen() {
   );
 }
 
-// ===================== STYLES =====================
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 45 },
   title: {
