@@ -6,7 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import { Tabs, useRouter } from "expo-router";
 import { ThemeProvider } from "../../context/themeContext";
 
-import { auth, onAuthStateChanged } from "../../firebase"; // nese path s'punon, provo ../firebase
+import { auth, onAuthStateChanged } from "../../firebase";
 
 export default function RootLayout() {
   const router = useRouter();
@@ -15,10 +15,8 @@ export default function RootLayout() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        // s'ka user → shko direkt te login
         router.replace("/(auth)/login");
       } else {
-        // ka user → vazhdo normal me tabs
         setCheckingAuth(false);
       }
     });
@@ -26,7 +24,6 @@ export default function RootLayout() {
     return unsubscribe;
   }, []);
 
-  // derisa po kontrollon auth-in, shfaq loader
   if (checkingAuth) {
     return (
       <View style={styles.loadingContainer}>

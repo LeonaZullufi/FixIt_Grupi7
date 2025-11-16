@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth, db } from "../firebase";      // 🔹 Vëre: ../ se jemi direkt brenda /app
+import { auth, db } from "../firebase";    
 import { doc, getDoc } from "firebase/firestore";
 
 export default function Index() {
@@ -27,7 +27,7 @@ export default function Index() {
         if (role === "admin") {
           router.replace("/(admin)/AdminDashboard");
         } else {
-          router.replace("/(tabs)/"); // home i userit të thjeshtë
+          router.replace("/(tabs)/"); 
         }
       } catch (err) {
         console.log("Error checking role:", err);
@@ -48,7 +48,6 @@ export default function Index() {
     );
   }
 
-  // Nuk kthejmë asgjë sepse sapo bëhet replace
   return null;
 }
 

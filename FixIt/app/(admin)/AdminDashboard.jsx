@@ -27,7 +27,7 @@ export default function AdminDashboard() {
   const [opened, setOpened] = useState(null);
   const navigation = useNavigation();
 
-  // ============================ HEADER ============================
+
   useLayoutEffect(() => {
     navigation.setOptions({
       title: "Admin Dashboard",
@@ -40,7 +40,7 @@ export default function AdminDashboard() {
     });
   }, []);
 
-  // ============================ LOGOUT ============================
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -50,7 +50,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // ============================ Merr raportet ============================
+  
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "reports"), (snap) => {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -60,7 +60,7 @@ export default function AdminDashboard() {
     return () => unsub();
   }, []);
 
-  // ============================ TOGGLE FINISHED ============================
+
   const toggleFinished = async (report) => {
     try {
       await updateDoc(doc(db, "reports", report.id), {
@@ -71,7 +71,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // ============================ DELETE ============================
   const deleteReport = async (reportId) => {
     try {
       await deleteDoc(doc(db, "reports", reportId));
@@ -81,7 +80,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // ============================ MAP PHOTO NAME → FILE ============================
+ 
   function getPhotoByName(name) {
     switch (name) {
       case "Gropa1.png":
@@ -136,18 +135,17 @@ export default function AdminDashboard() {
           </View>
         ))}
 
-        {/* ======================= LOGOUT BUTTON ======================= */}
+        
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Text style={styles.logoutText}>Çkyçu</Text>
         </TouchableOpacity>
 
-        {/* ======================= FOOTER ======================= */}
+       
         <Text style={styles.footer}>
           Developed by Florida, Leona, Albison, Ali © 2025
         </Text>
       </ScrollView>
 
-      {/* ============================ MODAL DETAILS ============================ */}
       <Modal visible={opened !== null} animationType="slide">
         {opened && (
           <ScrollView contentContainerStyle={{ padding: 20 }}>
@@ -172,7 +170,7 @@ export default function AdminDashboard() {
               <Text style={{ color: "white", textAlign: "center" }}>Mbyll</Text>
             </TouchableOpacity>
 
-            {/* ======================= DELETE BUTTON ======================= */}
+  
             <TouchableOpacity
               style={styles.deleteBtn}
               onPress={() => deleteReport(opened.id)}
@@ -194,7 +192,7 @@ export default function AdminDashboard() {
   );
 }
 
-// ================================= STYLES =================================
+
 const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: "bold", marginBottom: 20 },
 

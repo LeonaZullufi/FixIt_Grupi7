@@ -13,7 +13,7 @@ import {
 import { router } from "expo-router";
 import { doc, setDoc } from "firebase/firestore";
 
-const ADMIN_EMAIL = "admin@gmail.com"; // 👉 vendose emailin e adminit këtu
+const ADMIN_EMAIL = "admin@gmail.com"; 
 
 const Register = () => {
   const [firstName, setFirstName] = useState("");
@@ -61,7 +61,6 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // 1) Firebase Auth
       const cred = await createUserWithEmailAndPassword(
         auth,
         email.trim(),
@@ -69,12 +68,10 @@ const Register = () => {
       );
       const uid = cred.user.uid;
 
-      // 2) Gjej rolin sipas emailit
       const role = email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()
         ? "admin"
         : "user";
 
-      // 3) Krijo dokumentin users/{uid}
       await setDoc(doc(db, "users", uid), {
         firstName: firstName.trim(),
         lastName: lastName.trim(),

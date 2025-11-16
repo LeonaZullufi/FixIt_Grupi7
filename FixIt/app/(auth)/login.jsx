@@ -26,11 +26,10 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 
 WebBrowser.maybeCompleteAuthSession();
 
-// WEB CLIENT ID
 const WEB_CLIENT_ID =
   "483051599257-96qp4md9nulbifqt7l0iedv0qf31ebt4.apps.googleusercontent.com";
 
-const ADMIN_EMAIL = "admin@gmail.com"; // i njëjti si te register
+const ADMIN_EMAIL = "admin@gmail.com"; 
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -45,7 +44,6 @@ const Login = () => {
     }),
   });
 
-  // 🔁 Pasi të kthehet nga Google (MOBILE) – krijo user doc nëse duhet, pastaj shko te "/"
   useEffect(() => {
     const handleGoogleLogin = async () => {
       if (response?.type !== "success") return;
@@ -76,7 +74,6 @@ const Login = () => {
           });
         }
 
-        // ✅ Tani leje që gate-i te app/index.jsx ta gjejë rolin
         router.replace("/");
       } catch (err) {
         console.log("Google login error:", err);
@@ -89,7 +86,6 @@ const Login = () => {
     handleGoogleLogin();
   }, [response]);
 
-  // 📧 Login me email/password
   const handleEmailLogin = async () => {
     setError("");
 
@@ -126,7 +122,6 @@ const Login = () => {
         });
       }
 
-      // ✅ Pasi u kyçe, shko te "/" – gate e bën ndarjen admin/user
       router.replace("/");
     } catch (err) {
       console.log("Email login error:", err);
@@ -136,7 +131,6 @@ const Login = () => {
     }
   };
 
-  // 🔐 Login me Google – WEB vs MOBILE
   const handleGoogleLoginPress = async () => {
     setError("");
 
@@ -144,7 +138,6 @@ const Login = () => {
       setLoading(true);
 
       if (Platform.OS === "web") {
-        // WEB: Firebase signInWithPopup
         const provider = new GoogleAuthProvider();
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
@@ -170,7 +163,6 @@ const Login = () => {
 
         router.replace("/");
       } else {
-        // MOBILE: hapet browseri, përgjigja vazhdon në useEffect më lart
         await promptAsync();
       }
     } catch (err) {
