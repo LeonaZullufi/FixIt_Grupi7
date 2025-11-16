@@ -8,34 +8,27 @@ import {
   StatusBar,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-// Importojmë useTheme hook
 import { useTheme } from "../../context/themeContext";
 import bannerImage from "../../assets/explore.png";
 
 const ExploreScreen = () => {
   const navigation = useNavigation();
   const lastHeaderState = useRef(true);
-  // Marrja e colors dhe theme
   const { colors, theme } = useTheme();
 
   const handleScroll = (event) => {
     const currentY = event.nativeEvent.contentOffset.y;
-    // Ngjyra e Status Bar-it ndryshon bazuar në temë
     const barStyle = theme === "dark" ? "light-content" : "dark-content";
 
     if (currentY > 50 && lastHeaderState.current) {
       navigation.setOptions({ headerShown: false });
       lastHeaderState.current = false;
-      // Përdorim barStyle dinamik
       StatusBar.setBarStyle(barStyle, true);
     }
 
     if (currentY < 30 && !lastHeaderState.current) {
       navigation.setOptions({ headerShown: true });
       lastHeaderState.current = true;
-      // Kur kthehet lart, e vendosim në Light Content për të parë ikonat në sfond të bardhë (në Light Mode) ose të kundërtën
-      // Këtu duhet të përdorim barStyle dinamik për konsistencë, ose të mbështetemi në stilimin e Header-it të Navigation.
-      // Në këtë rast, po e bëj dinamike:
       StatusBar.setBarStyle(barStyle, true);
     }
   };
@@ -71,7 +64,6 @@ const ExploreScreen = () => {
   ];
 
   return (
-    // Sfondi kryesor i bazuar në temë
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -81,22 +73,18 @@ const ExploreScreen = () => {
       >
         <Image source={bannerImage} style={styles.banner} />
 
-        {/* Ngjyra e sfondit e bazuar në temë (ose ruajtur si fiks nëse dëshirohet theks i fortë) */}
         <View
           style={[styles.welcomeContainer, { backgroundColor: colors.primary }]}
         >
-          {/* Ngjyra e tekstit (e bardhë mbetet në këtë rast) */}
           <Text style={styles.welcome}>Mirë se erdhe!</Text>
         </View>
 
         <View style={styles.cardContainer}>
           {stats.map((item) => (
-            // Cards mbeten me ngjyrat fikse (item.color) për të treguar statusin
             <View
               key={item.id}
               style={[styles.card, { backgroundColor: item.color }]}
             >
-              {/* Teksti brenda cards mbetet i bardhë për shkak të sfondit të errët */}
               <Text style={styles.cardTitle}>
                 {item.emoji} {item.label}
               </Text>
@@ -105,9 +93,7 @@ const ExploreScreen = () => {
           ))}
         </View>
 
-        {/* Sukseset e fundit: Përdorim colors.card (sfond i lehtë/errët sipas temës) */}
         <View style={[styles.successSection, { backgroundColor: colors.card }]}>
-          {/* Titulli i suksesit: Përdorim colors.primary ose colors.text */}
           <Text style={[styles.successTitle, { color: colors.primary }]}>
             Sukseset e fundit
           </Text>
@@ -116,14 +102,12 @@ const ExploreScreen = () => {
             showsHorizontalScrollIndicator={false}
             style={styles.successScroll}
           >
-            {/* Success Card: Përdorim një ngjyrë të lehtë të theksit ose colors.notification */}
             <View
               style={[
                 styles.successCard,
                 { backgroundColor: colors.notification },
               ]}
             >
-              {/* Success Text: Përdorim colors.primary ose colors.text */}
               <Text style={[styles.successText, { color: colors.text }]}>
                 💡 Drita e rrugës në “Rr. Dëshmorët” është rregulluar
               </Text>
@@ -151,15 +135,12 @@ const ExploreScreen = () => {
           </ScrollView>
         </View>
 
-        {/* Fact Box: Përdorim një ngjyrë të theksit ose colors.notification */}
         <View
           style={[styles.factBox, { backgroundColor: colors.notification }]}
         >
-          {/* Fact Title: Përdorim colors.primary */}
           <Text style={[styles.factTitle, { color: colors.primary }]}>
             Thënie motivuese ose Fun Fact
           </Text>
-          {/* Fact Text: Përdorim colors.text */}
           <Text style={[styles.factText, { color: colors.text }]}>
             {facts[Math.floor(Math.random() * facts.length)]}
           </Text>
@@ -170,8 +151,6 @@ const ExploreScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  // Për shkak se po përdorim background dinamik në komponent,
-  // mund të heqim `container` nga këtu.
   container: {
     flex: 1,
   },
@@ -189,7 +168,6 @@ const styles = StyleSheet.create({
   },
   welcomeContainer: {
     alignItems: "center",
-    // Ngjyra fikse u zëvendësua dinamikisht
     marginBottom: 20,
     borderRadius: 10,
     paddingVertical: 12,
@@ -197,7 +175,7 @@ const styles = StyleSheet.create({
   welcome: {
     fontSize: 26,
     fontWeight: "bold",
-    color: "#fff", // E lëmë të bardhë për shkak të sfondit të errët të colors.primary
+    color: "#fff",
   },
   cardContainer: {
     flexDirection: "row",
@@ -211,7 +189,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     minHeight: 100,
     justifyContent: "center",
-    // Ngjyrat e hijes mund të përdorin colors.shadow nëse keni
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 5,
@@ -219,13 +196,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 14,
-    color: "#fff", // E lëmë të bardhë
+    color: "#fff",
     fontWeight: "500",
   },
   cardValue: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#fff", // E lëmë të bardhë
+    color: "#fff",
     marginTop: 4,
   },
   successSection: {
@@ -233,13 +210,11 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     padding: 20,
     borderRadius: 12,
-    // Ngjyra fikse u zëvendësua dinamikisht
     marginBottom: 20,
   },
   successTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    // Ngjyra fikse u zëvendësua dinamikisht
     marginBottom: 10,
     textAlign: "center",
   },
@@ -247,7 +222,6 @@ const styles = StyleSheet.create({
     paddingLeft: 5,
   },
   successCard: {
-    // Ngjyra fikse u zëvendësua dinamikisht
     padding: 12,
     borderRadius: 12,
     marginRight: 10,
@@ -257,11 +231,9 @@ const styles = StyleSheet.create({
   },
   successText: {
     fontSize: 13,
-    // Ngjyra fikse u zëvendësua dinamikisht
     padding: 5,
   },
   factBox: {
-    // Ngjyra fikse u zëvendësua dinamikisht
     borderRadius: 10,
     padding: 20,
     marginHorizontal: 20,
@@ -270,13 +242,11 @@ const styles = StyleSheet.create({
   factTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    // Ngjyra fikse u zëvendësua dinamikisht
     marginBottom: 10,
     textAlign: "center",
   },
   factText: {
     fontSize: 15,
-    // Ngjyra fikse u zëvendësua dinamikisht
     textAlign: "center",
   },
 });
