@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, Switch, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import DropdownList from "./DropdownList";
+import { useTheme } from "../../context/themeContext";
 
 export default function SettingItem({
   item,
@@ -16,17 +17,28 @@ export default function SettingItem({
   setTheme,
   themes,
 }) {
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.settingItemContainer}>
+    <View
+      style={[
+        styles.settingItemContainer,
+        { backgroundColor: colors.background },
+      ]}
+    >
       <View style={styles.settingItem}>
         <View style={styles.settingLeft}>
           <Feather
             name={item.icon}
             size={20}
-            color={item.isLogout ? "#FF3B30" : "#333"}
+            color={item.isLogout ? "#FF3B30" : colors.text}
           />
           <Text
-            style={[styles.settingText, item.isLogout && styles.logoutText]}
+            style={[
+              styles.settingText,
+              { color: item.isLogout ? "#FF3B30" : colors.text },
+              item.isLogout && styles.logoutText,
+            ]}
           >
             {item.label}
           </Text>
@@ -37,18 +49,24 @@ export default function SettingItem({
             value={item.value}
             onValueChange={setNotifications}
             thumbColor="#fff"
-            trackColor={{ true: "#6e5eff", false: "#ccc" }}
+            trackColor={{ true: colors.tabActive, false: "#ccc" }}
           />
         ) : (
           <TouchableOpacity
             onPress={() => handleSettingPress(item)}
             style={styles.settingRight}
           >
-            {item.label === "Language" ? (
-              <Text style={styles.settingValue}>{language}</Text>
+            {item.label === "Gjuha" ? (
+              <Text
+                style={[styles.settingValue, { color: colors.textSecondary }]}
+              >
+                {language}
+              </Text>
             ) : (
               item.value && (
-                <Text style={styles.settingValue}>
+                <Text
+                  style={[styles.settingValue, { color: colors.textSecondary }]}
+                >
                   {item.label === "Tema"
                     ? theme === "dark"
                       ? "Errët"
@@ -62,7 +80,7 @@ export default function SettingItem({
                 expandedSetting === item.id ? "chevron-up" : "chevron-right"
               }
               size={18}
-              color={item.isLogout ? "#FF3B30" : "#999"}
+              color={item.isLogout ? "#FF3B30" : colors.textSecondary}
             />
           </TouchableOpacity>
         )}
@@ -94,7 +112,14 @@ export default function SettingItem({
 }
 
 const styles = StyleSheet.create({
-  settingItemContainer: { marginBottom: 10 },
+  settingItemContainer: {
+    marginBottom: 10,
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    marginVertical: 5,
+  },
   settingItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -103,17 +128,7 @@ const styles = StyleSheet.create({
   },
   settingLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
   settingRight: { flexDirection: "row", alignItems: "center" },
-  settingText: { fontSize: 16, color: "#333", marginLeft: 12 },
-  settingValue: { fontSize: 14, color: "#666", marginRight: 8 },
-  logoutText: { color: "#FF3B30", fontWeight: "500" },
-  dropdown: {
-    backgroundColor: "#f0f0f5",
-    borderRadius: 10,
-    marginTop: 8,
-    paddingVertical: 4,
-  },
-  dropdownItem: { paddingVertical: 8, paddingHorizontal: 16 },
-  selectedDropdownItem: { backgroundColor: "#e0e0ff", borderRadius: 8 },
-  dropdownText: { fontSize: 16, color: "#333" },
-  selectedDropdownText: { fontWeight: "bold", color: "#6e5eff" },
+  settingText: { fontSize: 16, marginLeft: 12 },
+  settingValue: { fontSize: 14, marginRight: 8 },
+  logoutText: { fontWeight: "500" },
 });

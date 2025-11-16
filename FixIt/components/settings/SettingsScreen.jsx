@@ -12,7 +12,7 @@ export default function SettingsScreen({ onClose }) {
   const [expandedSetting, setExpandedSetting] = useState(null);
   const [language, setLanguage] = useState("Anglisht");
   const languages = ["Anglisht", "Shqip"];
-  const { theme: appTheme, toggleTheme } = useTheme();
+  const { theme: appTheme, toggleTheme, colors } = useTheme(); // ✅ theme + colors
   const themes = ["Dritë", "Errët"];
   const router = useRouter();
 
@@ -24,13 +24,7 @@ export default function SettingsScreen({ onClose }) {
       type: "button",
       isProfile: true,
     },
-    {
-      id: "2",
-      icon: "globe",
-      label: "Gjuha",
-      value: language,
-      type: "button",
-    },
+    { id: "2", icon: "globe", label: "Gjuha", value: language, type: "button" },
     {
       id: "3",
       icon: "moon",
@@ -45,13 +39,7 @@ export default function SettingsScreen({ onClose }) {
       value: notifications,
       type: "switch",
     },
-    {
-      id: "5",
-      label: "Dil",
-      icon: "log-out",
-      type: "button",
-      isLogout: true,
-    },
+    { id: "5", label: "Dil", icon: "log-out", type: "button", isLogout: true },
   ];
 
   const handleSettingPress = (item) => {
@@ -61,9 +49,7 @@ export default function SettingsScreen({ onClose }) {
           onClose();
           router.replace("/(auth)/login");
         })
-        .catch((error) => {
-          console.log("❌ Error gjatë çkyçjes:", error);
-        });
+        .catch((error) => console.log("❌ Error gjatë çkyçjes:", error));
       return;
     }
 
@@ -76,12 +62,26 @@ export default function SettingsScreen({ onClose }) {
   };
 
   return (
-    <View style={styles.modalOverlay}>
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Settings</Text>
+    <View
+      style={[styles.modalOverlay, { backgroundColor: colors.modalOverlay }]}
+    >
+      <View
+        style={[
+          styles.modalContainer,
+          {
+            backgroundColor: colors.modalBackground,
+            borderColor: colors.border,
+          },
+        ]}
+      >
+        <View
+          style={[styles.modalHeader, { borderBottomColor: colors.border }]}
+        >
+          <Text style={[styles.modalTitle, { color: colors.text }]}>
+            Settings
+          </Text>
           <TouchableOpacity onPress={onClose}>
-            <Feather name="x" size={24} color="#000" />
+            <Feather name="x" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -106,15 +106,14 @@ export default function SettingsScreen({ onClose }) {
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   modalContainer: {
-    backgroundColor: "#fff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
     maxHeight: "50%",
+    borderWidth: 1,
   },
   modalHeader: {
     flexDirection: "row",
@@ -123,7 +122,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
   },
-  modalTitle: { fontWeight: "bold", fontSize: 20, color: "#000" },
+  modalTitle: { fontWeight: "bold", fontSize: 20 },
 });

@@ -1,6 +1,7 @@
 import React from "react";
 import { FlatList, View, StyleSheet } from "react-native";
 import SettingItem from "./SettingItem";
+import { useTheme } from "../../context/themeContext";
 
 export default function SettingsList({
   settings,
@@ -15,6 +16,8 @@ export default function SettingsList({
   setTheme,
   themes,
 }) {
+  const { colors } = useTheme();
+
   return (
     <FlatList
       data={settings}
@@ -34,11 +37,13 @@ export default function SettingsList({
           themes={themes}
         />
       )}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
+      ItemSeparatorComponent={() => (
+        <View style={[styles.separator, { backgroundColor: colors.border }]} />
+      )}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  separator: { height: 1, backgroundColor: "#f0f0f0", marginVertical: 5 },
+  separator: { height: 1, marginVertical: 5 },
 });

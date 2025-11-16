@@ -1,4 +1,3 @@
-// context/ThemeContext.js
 import React, { createContext, useState, useContext, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -14,6 +13,8 @@ const themes = {
     tabBar: "#023e8a",
     tabActive: "#A4FFFF",
     tabInactive: "white",
+    modalOverlay: "rgba(0,0,0,0.5)",
+    modalBackground: "#ffffff",
   },
   dark: {
     background: "#0d0d0d",
@@ -24,6 +25,9 @@ const themes = {
     tabBar: "#023e8a",
     tabActive: "#A4FFFF",
     tabInactive: "#cccccc",
+
+    modalOverlay: "rgba(0,0,0,0.7)",
+    modalBackground: "#1a1a1a",
   },
 };
 

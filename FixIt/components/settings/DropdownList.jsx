@@ -1,22 +1,32 @@
 import React from "react";
 import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
+import { useTheme } from "../../context/themeContext";
 
 export default function DropdownList({ options = [], selected, onSelect }) {
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.dropdown}>
+    <View style={[styles.dropdown, { backgroundColor: colors.card }]}>
       {options.map((option) => (
         <TouchableOpacity
           key={option}
           style={[
             styles.dropdownItem,
-            selected === option && styles.selectedDropdownItem,
+            selected === option && {
+              backgroundColor: colors.tabActive,
+              borderRadius: 8,
+            },
           ]}
           onPress={() => onSelect(option)}
         >
           <Text
             style={[
               styles.dropdownText,
-              selected === option && styles.selectedDropdownText,
+              { color: colors.text },
+              selected === option && {
+                color: colors.tabBar,
+                fontWeight: "bold",
+              },
             ]}
           >
             {option}
@@ -29,7 +39,6 @@ export default function DropdownList({ options = [], selected, onSelect }) {
 
 const styles = StyleSheet.create({
   dropdown: {
-    backgroundColor: "#f0f0f5",
     borderRadius: 10,
     marginTop: 8,
     paddingVertical: 4,
@@ -38,16 +47,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  selectedDropdownItem: {
-    backgroundColor: "#e0e0ff",
-    borderRadius: 8,
-  },
   dropdownText: {
     fontSize: 16,
-    color: "#333",
-  },
-  selectedDropdownText: {
-    fontWeight: "bold",
-    color: "#6e5eff",
   },
 });

@@ -1,12 +1,29 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { useTheme } from "../../context/themeContext";
 
 export default function StatCard({ item }) {
+  const { colors } = useTheme();
+
   return (
-    <View style={[styles.statCard, { backgroundColor: item.color }]}>
-      <Text style={styles.statEmoji}>{item.emoji}</Text>
-      <Text style={styles.statLabel}>{item.label}</Text>
-      <Text style={styles.statValue}>{item.value}</Text>
+    <View
+      style={[
+        styles.statCard,
+        {
+          backgroundColor: item.color || colors.card,
+          borderColor: colors.border,
+        },
+      ]}
+    >
+      <Text style={[styles.statEmoji, { color: colors.text }]}>
+        {item.emoji}
+      </Text>
+      <Text style={[styles.statLabel, { color: colors.text }]}>
+        {item.label}
+      </Text>
+      <Text style={[styles.statValue, { color: colors.text }]}>
+        {item.value}
+      </Text>
     </View>
   );
 }
@@ -25,6 +42,6 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   statEmoji: { fontSize: 28 },
-  statLabel: { color: "#fff", fontWeight: "500", marginTop: 8, fontSize: 14 },
-  statValue: { color: "#fff", fontSize: 24, fontWeight: "bold", marginTop: 5 },
+  statLabel: { fontWeight: "500", marginTop: 8, fontSize: 14 },
+  statValue: { fontSize: 24, fontWeight: "bold", marginTop: 5 },
 });
