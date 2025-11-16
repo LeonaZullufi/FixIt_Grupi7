@@ -14,7 +14,7 @@ const AboutAppComponent = () => {
 
   return (
     <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
         🛠 Si të përdorni aplikacionin
       </Text>
 

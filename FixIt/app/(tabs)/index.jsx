@@ -76,7 +76,9 @@ const ExploreScreen = () => {
         <View
           style={[styles.welcomeContainer, { backgroundColor: colors.primary }]}
         >
-          <Text style={styles.welcome}>Mirë se erdhe!</Text>
+          <Text style={[styles.welcome, { color: colors.text }]}>
+            Mirë se erdhe!
+          </Text>
         </View>
 
         <View style={styles.cardContainer}>
@@ -94,7 +96,7 @@ const ExploreScreen = () => {
         </View>
 
         <View style={[styles.successSection, { backgroundColor: colors.card }]}>
-          <Text style={[styles.successTitle, { color: colors.primary }]}>
+          <Text style={[styles.successTitle, { color: colors.text }]}>
             Sukseset e fundit
           </Text>
           <ScrollView
@@ -138,7 +140,7 @@ const ExploreScreen = () => {
         <View
           style={[styles.factBox, { backgroundColor: colors.notification }]}
         >
-          <Text style={[styles.factTitle, { color: colors.primary }]}>
+          <Text style={[styles.factTitle, { color: colors.text }]}>
             Thënie motivuese ose Fun Fact
           </Text>
           <Text style={[styles.factText, { color: colors.text }]}>

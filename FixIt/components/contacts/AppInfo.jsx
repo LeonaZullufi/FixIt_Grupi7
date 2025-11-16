@@ -7,7 +7,7 @@ const AppInfo = () => {
 
   return (
     <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
         🔹 Çfarë është FixIt?
       </Text>
       <Text style={[styles.text, { color: colors.textSecondary }]}>

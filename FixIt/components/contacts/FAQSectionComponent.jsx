@@ -7,7 +7,7 @@ const FAQSectionComponent = () => {
 
   return (
     <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
         💬 Pyetjet e Bëra Shpesh (FAQ)
       </Text>
 
