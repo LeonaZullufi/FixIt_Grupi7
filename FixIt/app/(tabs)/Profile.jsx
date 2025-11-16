@@ -46,7 +46,7 @@ export default function ProfileScreen() {
         height: 75,
       },
       headerTitleAlign: "center",
-      headerTintColor: colors.tabInactive,
+      color: colors.text,
     });
   }, [navigation, colors]);
 

@@ -55,8 +55,6 @@ export default function RootLayout() {
                   style={{
                     flex: 1,
                     backgroundColor: "#023e8a",
-                    borderBottomLeftRadius: 90,
-                    borderBottomRightRadius: 90,
                   }}
                 />
               ),
