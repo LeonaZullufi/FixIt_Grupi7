@@ -1,4 +1,5 @@
 import React, { useState, useLayoutEffect, useEffect } from "react";
+import * as ImagePicker from "expo-image-picker";
 import {
   View,
   Text,
@@ -43,16 +44,17 @@ async function getAddressFromCoords(lat, lng) {
 export default function ReportScreen() {
   const navigation = useNavigation();
   const { colors } = useTheme();
-  const [selectedPhoto, setSelectedPhoto] = useState(null);
+
+  const [photoUri, setPhotoUri] = useState(null);
   const [description, setDescription] = useState("");
+  const [photoPickerVisible, setPhotoPickerVisible] = useState(false);
+  const [editPhotoVisible, setEditPhotoVisible] = useState(false);
+
   const [pinLocation, setPinLocation] = useState(null);
   const [placeName, setPlaceName] = useState("");
   const [reports, setReports] = useState([]);
   const [openedReport, setOpenedReport] = useState(null);
   const [editDescription, setEditDescription] = useState("");
-  const [editPhoto, setEditPhoto] = useState(null);
-  const [photoPickerVisible, setPhotoPickerVisible] = useState(false);
-  const [editPhotoVisible, setEditPhotoVisible] = useState(false);
 
   const [loadingReports, setLoadingReports] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -69,23 +71,22 @@ export default function ReportScreen() {
     }
   }, [errorMessage, successMessage]);
 
-  const photos = [
-    require("../../assets/ProblemOnMap/Gropa1.png"),
-    require("../../assets/ProblemOnMap/Gropa2Prizren.jpg"),
-    require("../../assets/ProblemOnMap/NdriqimPrishtine.jpg"),
-    require("../../assets/ProblemOnMap/MbeturinaSkenderaj.jpg"),
-    require("../../assets/ProblemOnMap/KendiLojrave.jpg"),
-    require("../../assets/ProblemOnMap/KanalizimNeRruge.jpg"),
-  ];
+  const takePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      setErrorMessage("Duhet leje për kamerën!");
+      return;
+    }
 
-  const photoNames = [
-    "Gropa1.png",
-    "Gropa2Prizren.jpg",
-    "NdriqimPrishtine.jpg",
-    "MbeturinaSkenderaj.jpg",
-    "KendiLojrave.jpg",
-    "KanalizimNeRruge.jpg",
-  ];
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setPhotoUri(result.assets[0].uri);
+    }
+  };
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -95,6 +96,7 @@ export default function ReportScreen() {
       headerTintColor: "white",
     });
   }, []);
+
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return setLoadingReports(false);
@@ -123,11 +125,12 @@ export default function ReportScreen() {
     const { latitude, longitude } = e.nativeEvent.coordinate;
     setPinLocation({ latitude, longitude });
     setPlaceName(await getAddressFromCoords(latitude, longitude));
+    await takePhoto();
   };
 
   const sendReport = async () => {
-    if (!pinLocation || !selectedPhoto || !description.trim()) {
-      return setErrorMessage("Plotëso foton, vendin dhe përshkrimin!");
+    if (!pinLocation || !photoUri || !description.trim()) {
+      return setErrorMessage("Plotëso vendin, foton dhe përshkrimin!");
     }
 
     const user = auth.currentUser;
@@ -135,24 +138,23 @@ export default function ReportScreen() {
 
     setLoading(true);
 
-    const imgName = photoNames[photos.indexOf(selectedPhoto)];
-
     try {
       await addDoc(collection(db, "reports"), {
         latitude: pinLocation.latitude,
         longitude: pinLocation.longitude,
         placeName,
-        photoName: imgName,
+        photoUri,
         description,
         userEmail: user.email,
         createdAt: Date.now(),
         finished: false,
       });
 
-      setSelectedPhoto(null);
+      setPhotoUri(null);
       setDescription("");
       setPinLocation(null);
       setPlaceName("");
+
       setSuccessMessage("Raporti u dërgua me sukses!");
     } catch {
       setErrorMessage("Gabim gjatë dërgimit.");
@@ -160,6 +162,7 @@ export default function ReportScreen() {
       setLoading(false);
     }
   };
+
   const deleteReport = async (id) => {
     setLoading(true);
     try {
@@ -175,17 +178,10 @@ export default function ReportScreen() {
 
   const updateReport = async (id) => {
     setLoading(true);
-
-    const finalPhotoName = editPhoto
-      ? photoNames[photos.indexOf(editPhoto)]
-      : openedReport.photoName;
-
     try {
       await updateDoc(doc(db, "reports", id), {
         description: editDescription,
-        photoName: finalPhotoName,
       });
-
       setOpenedReport(null);
       setSuccessMessage("Raporti u përditësua.");
     } catch {
@@ -195,24 +191,6 @@ export default function ReportScreen() {
     }
   };
 
-  function getPhotoByName(name) {
-    switch (name) {
-      case "Gropa1.png":
-        return require("../../assets/ProblemOnMap/Gropa1.png");
-      case "Gropa2Prizren.jpg":
-        return require("../../assets/ProblemOnMap/Gropa2Prizren.jpg");
-      case "NdriqimPrishtine.jpg":
-        return require("../../assets/ProblemOnMap/NdriqimPrishtine.jpg");
-      case "MbeturinaSkenderaj.jpg":
-        return require("../../assets/ProblemOnMap/MbeturinaSkenderaj.jpg");
-      case "KendiLojrave.jpg":
-        return require("../../assets/ProblemOnMap/KendiLojrave.jpg");
-      case "KanalizimNeRruge.jpg":
-        return require("../../assets/ProblemOnMap/KanalizimNeRruge.jpg");
-      default:
-        return require("../../assets/ProblemOnMap/Gropa1.png");
-    }
-  }
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -228,7 +206,6 @@ export default function ReportScreen() {
         >
           <Text style={styles.title}>Raporto një problem</Text>
 
-          {/* STATUS */}
           {loadingReports && (
             <View style={styles.statusRow}>
               <ActivityIndicator size="small" color="#0077b6" />
@@ -241,7 +218,6 @@ export default function ReportScreen() {
             <Text style={styles.successText}>{successMessage}</Text>
           )}
 
-          {/* MAP */}
           <MapView
             style={styles.map}
             onLongPress={placePin}
@@ -253,7 +229,6 @@ export default function ReportScreen() {
             }}
           >
             {pinLocation && <Marker coordinate={pinLocation} pinColor="blue" />}
-
             {reports.map((r) => (
               <Marker
                 key={r.id}
@@ -262,23 +237,24 @@ export default function ReportScreen() {
                 onPress={() => {
                   setOpenedReport(r);
                   setEditDescription(r.description);
-                  setEditPhoto(null);
                 }}
               />
             ))}
           </MapView>
 
-          {/* SELECT PHOTO */}
-          <TouchableOpacity
-            style={styles.photoButton}
-            onPress={() => setPhotoPickerVisible(true)}
-          >
-            <Text style={styles.photoText}>
-              {selectedPhoto ? "Ndrysho Fotën" : "Zgjidh Foto"}
-            </Text>
-          </TouchableOpacity>
+          {photoUri && (
+            <Image
+              source={{ uri: photoUri }}
+              style={{
+                width: "90%",
+                height: 200,
+                alignSelf: "center",
+                marginTop: 15,
+                borderRadius: 15,
+              }}
+            />
+          )}
 
-          {/* DESCRIPTION */}
           <TextInput
             style={[styles.input, { minHeight: 60 }]}
             placeholder="Përshkrimi..."
@@ -287,12 +263,10 @@ export default function ReportScreen() {
             multiline
           />
 
-          {/* ADDRESS */}
           {placeName !== "" && (
             <Text style={styles.autoAddress}>📍 {placeName}</Text>
           )}
 
-          {/* SEND */}
           <TouchableOpacity
             style={[styles.sendButton, { marginTop: 10 }]}
             onPress={sendReport}
@@ -302,153 +276,60 @@ export default function ReportScreen() {
               {loading ? "Duke dërguar..." : "Dërgo Raportin"}
             </Text>
           </TouchableOpacity>
-
-          {/* PHOTO PICKER MODAL */}
-          <Modal visible={photoPickerVisible} transparent animationType="slide">
-            <View
-              style={[
-                styles.photoModal,
-                { backgroundColor: colors.modalBackground },
-              ]}
-            >
-              <Text style={styles.modalTitle}>Zgjidh Foto</Text>
-
-              <ScrollView horizontal>
-                {photos.map((p, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => {
-                      setSelectedPhoto(p);
-                      setPhotoPickerVisible(false);
-                    }}
-                  >
-                    <Image source={p} style={styles.horizontalThumb} />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <TouchableOpacity
-                style={styles.closePhotoModalBtn}
-                onPress={() => setPhotoPickerVisible(false)}
-              >
-                <Text style={{ color: "white" }}>Mbyll</Text>
-              </TouchableOpacity>
-            </View>
-          </Modal>
-
           {/* DETAILS MODAL */}
           <Modal visible={openedReport !== null} animationType="slide">
             {openedReport && (
-              <ScrollView
-                style={{ backgroundColor: colors.modalBackground }}
-                contentContainerStyle={styles.modalScroll}
-              >
-                <View
-                  style={[
-                    styles.modalContent,
-                    { backgroundColor: colors.modalBackground },
-                  ]}
-                >
+              <ScrollView style={{ backgroundColor: colors.background }}>
+                <View style={{ padding: 20 }}>
+                  {/* FOTO */}
                   <Image
-                    source={getPhotoByName(openedReport.photoName)}
-                    style={styles.modalImage}
+                    source={{ uri: openedReport.photoUri }}
+                    style={{
+                      width: "100%",
+                      height: 300,
+                      borderRadius: 15,
+                    }}
                   />
 
-                  <Text style={styles.infoText}>
-                    🏙 Vend: {openedReport.placeName}
-                  </Text>
-                  <Text style={styles.infoText}>
-                    📍 Lat: {openedReport.latitude}
-                  </Text>
-                  <Text style={styles.infoText}>
-                    📍 Lng: {openedReport.longitude}
-                  </Text>
-
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        minHeight: 60,
-                        backgroundColor: colors.card,
-                        color: colors.text,
-                        borderColor: colors.border,
-                      },
-                    ]}
-                    value={editDescription}
-                    onChangeText={setEditDescription}
-                    multiline
-                  />
-
-                  <TouchableOpacity
-                    style={styles.updateButton}
-                    onPress={() => setEditPhotoVisible(true)}
+                  {/* PERSHKRIMI */}
+                  <Text
+                    style={{
+                      marginTop: 15,
+                      fontSize: 16,
+                      color: colors.text,
+                    }}
                   >
-                    <Text style={styles.updateText}>Ndrysho Fotën</Text>
-                  </TouchableOpacity>
+                    📝 {openedReport.description}
+                  </Text>
 
-                  <TouchableOpacity
-                    style={styles.updateButton}
-                    onPress={() => updateReport(openedReport.id)}
+                  {/* VENDI */}
+                  <Text
+                    style={{
+                      marginTop: 10,
+                      fontSize: 14,
+                      color: "gray",
+                    }}
                   >
-                    <Text style={styles.updateText}>Ruaj Ndryshimet</Text>
-                  </TouchableOpacity>
+                    📍 {openedReport.placeName}
+                  </Text>
 
+                  {/* MBYLL */}
                   <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => deleteReport(openedReport.id)}
-                  >
-                    <Text style={styles.deleteText}>Fshi Raportin</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.closeButton}
+                    style={{
+                      marginTop: 25,
+                      backgroundColor: "#023e8a",
+                      padding: 15,
+                      borderRadius: 10,
+                    }}
                     onPress={() => setOpenedReport(null)}
                   >
-                    <Text style={styles.closeText}>Mbyll</Text>
+                    <Text style={{ color: "white", textAlign: "center" }}>
+                      Mbyll
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
             )}
-          </Modal>
-
-          {/* EDIT PHOTO MODAL */}
-          <Modal
-            visible={editPhotoVisible}
-            animationType="slide"
-            transparent={true}
-          >
-            <View
-              style={[
-                styles.photoModal,
-                { backgroundColor: colors.modalBackground },
-              ]}
-            >
-              <Text style={styles.modalTitle}>Ndrysho Fotën</Text>
-
-              <ScrollView
-                horizontal
-                style={{ backgroundColor: colors.modalBackground }}
-              >
-                {photos.map((p, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => {
-                      setEditPhoto(p);
-                      setEditPhotoVisible(false);
-                    }}
-                  >
-                    <Image source={p} style={styles.horizontalThumb} />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <TouchableOpacity
-                style={styles.closePhotoModalBtn}
-                onPress={() => setEditPhotoVisible(false)}
-              >
-                <Text style={{ color: "white" }}>Mbyll</Text>
-              </TouchableOpacity>
-            </View>
           </Modal>
         </View>
       </ScrollView>
@@ -479,14 +360,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderRadius: 10,
   },
-  photoButton: {
-    backgroundColor: "#A4FFFF",
-    marginTop: 20,
-    marginHorizontal: 50,
-    padding: 12,
-    borderRadius: 20,
-  },
-  photoText: { textAlign: "center", color: "#023e8a" },
   input: {
     borderWidth: 1,
     borderColor: "#aaa",
@@ -510,63 +383,4 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   sendText: { textAlign: "center", color: "white", fontSize: 18 },
-  photoModal: {
-    backgroundColor: "white",
-    marginTop: "40%",
-    padding: 20,
-    borderRadius: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    textAlign: "center",
-    color: "#023e8a",
-    marginBottom: 20,
-  },
-  horizontalThumb: {
-    width: 120,
-    height: 120,
-    borderRadius: 15,
-    marginRight: 15,
-  },
-  modalScroll: { paddingBottom: 80 },
-  modalContent: { padding: 20 },
-  modalImage: {
-    width: "100%",
-    height: 300,
-    borderRadius: 15,
-  },
-  infoText: {
-    marginTop: 7,
-    fontSize: 14,
-    color: "gray",
-  },
-  editInput: {
-    borderWidth: 1,
-    borderColor: "#aaa",
-    borderRadius: 10,
-    marginTop: 15,
-    padding: 10,
-  },
-  updateButton: {
-    backgroundColor: "#0077b6",
-    padding: 12,
-    borderRadius: 10,
-    marginTop: 20,
-  },
-  updateText: { color: "white", textAlign: "center", fontWeight: "bold" },
-  deleteButton: {
-    backgroundColor: "#d00000",
-    padding: 12,
-    borderRadius: 10,
-    marginTop: 10,
-  },
-  deleteText: { color: "white", textAlign: "center", fontWeight: "bold" },
-  closeButton: {
-    backgroundColor: "#023e8a",
-    padding: 12,
-    borderRadius: 10,
-    marginTop: 20,
-  },
-  closeText: { color: "white", textAlign: "center" },
 });
