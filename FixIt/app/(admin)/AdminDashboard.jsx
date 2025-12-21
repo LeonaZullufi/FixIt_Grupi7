@@ -8,7 +8,7 @@ import {
   Image,
   StyleSheet,
 } from "react-native";
-
+import { serverTimestamp } from "firebase/firestore";
 import {
   collection,
   onSnapshot,
@@ -52,16 +52,25 @@ export default function AdminDashboard() {
   }, []);
 
   const updateStatus = async (reportId, status) => {
-    try {
-      const reportRef = doc(db, "reports", reportId);
-      const reportData = reports.find((r) => r.id === reportId);
+      try {
+    const reportRef = doc(db, "reports", reportId);
+    const reportData = reports.find((r) => r.id === reportId);
 
       if (!reportData) {
         console.error("Report not found");
         return;
       }
 
+       // 🔴 Nëse përfundohet problemi, ruaj datën
+    if (status === "completed") {
+      await updateDoc(reportRef, {
+        status,
+        completedAt: serverTimestamp(), // ✅ DATA E PËRFUNDIMIT
+      });
+    } else {
+      // Për statuset tjera, vetëm statusi
       await updateDoc(reportRef, { status });
+    }
 
       if (reportData.userEmail) {
         await saveReportStatusNotification(
@@ -142,6 +151,11 @@ export default function AdminDashboard() {
             <Text style={styles.info}>
               Status aktual: {statusLabel(opened.status)}
             </Text>
+             {opened.completedAt && (
+              <Text style={styles.info}>
+                ✅ Përfunduar më: {opened.completedAt.toDate().toLocaleString()}
+              </Text>
+            )}
 
             {/* STATUS BUTTONS */}
             <View style={styles.statusBox}>
