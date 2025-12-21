@@ -10,12 +10,17 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../context/themeContext";
 import bannerImage from "../../assets/explore.png";
-
-// 🔹 Firebase
+import {
+  collection,
+  onSnapshot,
+  query,
+  where,
+  orderBy,
+  limit,
+} from "firebase/firestore";
 import { auth, db } from "../../firebase";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
 
-const ExploreScreen = () => {
+export default function ExploreScreen() {
   const navigation = useNavigation();
   const lastHeaderState = useRef(true);
   const { colors, theme } = useTheme();
@@ -23,68 +28,66 @@ const ExploreScreen = () => {
   const [stats, setStats] = useState({
     solved: 0,
     pending: 0,
-    mine: 0,
+    inProcess: 0,
     activeUsers: 0,
+    mineTotal: 0,
     loading: true,
   });
 
-  const handleScroll = (event) => {
-    const currentY = event.nativeEvent.contentOffset.y;
+  const [latestCompleted, setLatestCompleted] = useState([]);
+
+  const handleScroll = (e) => {
+    const y = e.nativeEvent.contentOffset.y;
     const barStyle = theme === "dark" ? "light-content" : "dark-content";
 
-    if (currentY > 50 && lastHeaderState.current) {
+    if (y > 50 && lastHeaderState.current) {
       navigation.setOptions({ headerShown: false });
       lastHeaderState.current = false;
-      StatusBar.setBarStyle(barStyle);
+      StatusBar.setBarStyle(barStyle, true);
     }
 
-    if (currentY < 30 && !lastHeaderState.current) {
+    if (y < 30 && !lastHeaderState.current) {
       navigation.setOptions({ headerShown: true });
       lastHeaderState.current = true;
-      StatusBar.setBarStyle("light-content");
+      StatusBar.setBarStyle(barStyle, true);
     }
   };
 
   useEffect(() => {
     const user = auth.currentUser;
-    const userEmail = user?.email ?? null;
+    const email = user?.email ?? null;
 
-    // 1) RAPORTET
-    const reportsRef = collection(db, "reports");
-    const unsubReports = onSnapshot(reportsRef, (snap) => {
+    const unsubReports = onSnapshot(collection(db, "reports"), (snap) => {
       let solved = 0;
       let pending = 0;
-      let mine = 0;
+      let inProcess = 0;
+      let mineTotal = 0;
 
-      snap.forEach((docSnap) => {
-        const data = docSnap.data();
-        if (data.finished) solved++;
-        else pending++;
-
-        if (userEmail && data.userEmail === userEmail) {
-          mine++;
-        }
+      snap.forEach((d) => {
+        const r = d.data();
+        if (r.status === "completed") solved++;
+        if (r.status === "pending") pending++;
+        if (email && r.userEmail === email) mineTotal++;
+        if (email && r.userEmail === email && r.status === "in_progress")
+          inProcess++;
       });
 
-      setStats((prev) => ({
-        ...prev,
+      setStats((p) => ({
+        ...p,
         solved,
         pending,
-        mine,
+        inProcess,
+        mineTotal,
         loading: false,
       }));
     });
 
-    // 2) USERAT AKTIVË nga koleksioni "users"
-    const usersRef = collection(db, "users");
-    const qActive = query(usersRef, where("status", "==", "active"));
-
-    const unsubUsers = onSnapshot(qActive, (snap) => {
-      setStats((prev) => ({
-        ...prev,
-        activeUsers: snap.size,
-      }));
-    });
+    const unsubUsers = onSnapshot(
+      query(collection(db, "users"), where("status", "==", "active")),
+      (snap) => {
+        setStats((p) => ({ ...p, activeUsers: snap.size }));
+      }
+    );
 
     return () => {
       unsubReports();
@@ -92,240 +95,195 @@ const ExploreScreen = () => {
     };
   }, []);
 
-  // kartat që i shfaqim në UI
-  const cards = [
-    {
-      id: 1,
-      label: "Probleme të zgjidhura",
-      value: stats.solved,
-      color: "#27B4E2",
-      emoji: "✅",
-    },
-    {
-      id: 2,
-      label: "Në pritje",
-      value: stats.pending,
-      color: "#FF6663",
-      emoji: "🕓",
-    },
-    {
-      id: 3,
-      label: "Në lagjen tënde",
-      value: stats.mine,
-      color: "#003F91",
-      emoji: "📍",
-    },
-    {
-      id: 4,
-      label: "Përdorues aktivë",
-      value: stats.activeUsers,
-      color: "#2D2D2D",
-      emoji: "👥",
-    },
-  ];
+  useEffect(() => {
+    const qCompleted = query(
+      collection(db, "reports"),
+      where("status", "==", "completed"),
+      orderBy("createdAt", "desc"),
+      limit(10)
+    );
 
-  const facts = [
-    "Çdo raportim i vogël ndihmon ta bëjmë lagjen më të pastër 🌍.",
-    "Përdoruesit e FixIt kanë zgjidhur mbi 1000 probleme këtë vit!",
-  ];
+    const unsub = onSnapshot(qCompleted, (snap) => {
+      setLatestCompleted(
+        snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      );
+    });
+
+    return () => unsub();
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
       >
         <Image source={bannerImage} style={styles.banner} />
 
-        <View
-          style={[styles.welcomeContainer, { backgroundColor: colors.primary }]}
-        >
-          <Text style={[styles.welcome, { color: colors.text }]}>
-            Mirë se erdhe!
-          </Text>
+        <View style={[styles.welcomeBox, { backgroundColor: colors.primary }]}>
+          <Text style={styles.welcomeTitle}>Mirë se erdhe!</Text>
           {!stats.loading && (
-            <Text style={{ color: colors.text }}>
-              Ke raportuar {stats.mine} probleme në lagjen tënde ✨
+            <Text style={styles.welcomeSub}>
+              Ke raportuar {stats.mineTotal} probleme në lagjen tënde
             </Text>
           )}
         </View>
 
-        <View style={styles.cardContainer}>
-          {cards.map((item) => (
-            <View
-              key={item.id}
-              style={[styles.card, { backgroundColor: item.color }]}
-            >
-              <Text style={styles.cardTitle}>
-                {item.emoji} {item.label}
-              </Text>
-              <Text style={styles.cardValue}>
-                {stats.loading ? "…" : item.value}
-              </Text>
-            </View>
-          ))}
+        <View style={styles.cardRow}>
+          <View style={[styles.card, styles.active]}>
+            <Text style={styles.cardLabel}>👥 Aktivë</Text>
+            <Text style={styles.cardValue}>{stats.activeUsers}</Text>
+          </View>
+
+          <View style={[styles.card, styles.solved]}>
+            <Text style={styles.cardLabel}>✅ Të zgjidhura</Text>
+            <Text style={styles.cardValue}>{stats.solved}</Text>
+          </View>
         </View>
 
-        <View
-          style={[styles.successSection, { backgroundColor: colors.card }]}
-        >
-          <Text style={[styles.successTitle, { color: colors.text }]}>
-            Sukseset e fundit
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.successScroll}
+        <View style={styles.cardRow}>
+          <View style={[styles.card, styles.process]}>
+            <Text style={styles.cardLabel}>⚙️ Në proces</Text>
+            <Text style={styles.cardValue}>{stats.inProcess}</Text>
+          </View>
+
+          <View style={[styles.card, styles.pending]}>
+            <Text style={styles.cardLabel}>🕓 Në pritje</Text>
+            <Text style={styles.cardValue}>{stats.pending}</Text>
+          </View>
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Sukseset e fundit
+        </Text>
+
+        {latestCompleted.map((item) => (
+          <View
+            key={item.id}
+            style={[styles.successCard, { backgroundColor: colors.card }]}
           >
-            <View
-              style={[
-                styles.successCard,
-                { backgroundColor: colors.notification },
-              ]}
-            >
-              <Text style={[styles.successText, { color: colors.text }]}>
-                💡 Drita e rrugës në “Rr. Dëshmorët” është rregulluar
+            <View style={styles.successLine} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.successTitle, { color: colors.text }]}>
+                {item.problemTitle || "Problem pa titull"}
               </Text>
+              {item.placeName && (
+                <Text style={[styles.successMeta, { color: colors.text }]}>
+                  📍 {item.placeName}
+                </Text>
+              )}
+              {item.description && (
+                <Text style={[styles.successDesc, { color: colors.text }]}>
+                  {item.description}
+                </Text>
+              )}
             </View>
-            <View
-              style={[
-                styles.successCard,
-                { backgroundColor: colors.notification },
-              ]}
-            >
-              <Text style={[styles.successText, { color: colors.text }]}>
-                🚮 Pastrimi i mbeturinave në “Rr. Iliria” u krye
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.successCard,
-                { backgroundColor: colors.notification },
-              ]}
-            >
-              <Text style={[styles.successText, { color: colors.text }]}>
-                💧 Uji është rikthyer në “Lagjja Kalabria”
-              </Text>
-            </View>
-          </ScrollView>
-        </View>
-
-        <View
-          style={[styles.factBox, { backgroundColor: colors.notification }]}
-        >
-          <Text style={[styles.factTitle, { color: colors.text }]}>
-            Thënie motivuese ose Fun Fact
-          </Text>
-          <Text style={[styles.factText, { color: colors.text }]}>
-            {facts[Math.floor(Math.random() * facts.length)]}
-          </Text>
-        </View>
+          </View>
+        ))}
       </ScrollView>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
-  },
+  container: { flex: 1 },
+  content: { padding: 16, paddingBottom: 120 },
+
   banner: {
     width: "100%",
-    height: 220,
+    height: 200,
     resizeMode: "contain",
-    alignSelf: "center",
-    marginTop: 10,
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  welcomeContainer: {
+
+  welcomeBox: {
+    borderRadius: 16,
+    paddingVertical: 16,
     alignItems: "center",
-    marginBottom: 20,
-    borderRadius: 10,
-    paddingVertical: 12,
+    marginBottom: 18,
   },
-  welcome: {
-    fontSize: 26,
-    fontWeight: "bold",
-    color: "#fff",
+
+  welcomeTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "black",
   },
-  cardContainer: {
+
+  welcomeSub: {
+    fontSize: 14,
+    marginTop: 4,
+    color: "black",
+    opacity: 0.9,
+  },
+
+  cardRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     justifyContent: "space-between",
+    marginBottom: 12,
   },
+
   card: {
     width: "48%",
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 12,
-    minHeight: 100,
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
+    borderRadius: 16,
+    padding: 18,
+    alignItems: "center",
   },
-  cardTitle: {
+
+  cardLabel: {
     fontSize: 14,
-    color: "#fff",
+    color: "white",
+    marginBottom: 6,
     fontWeight: "500",
   },
+
   cardValue: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: "bold",
-    color: "#fff",
-    marginTop: 4,
+    color: "white",
   },
-  successSection: {
-    marginTop: 10,
-    paddingTop: 10,
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  successTitle: {
+
+  active: { backgroundColor: "#2D2D2D" },
+  solved: { backgroundColor: "#27B4E2" },
+  process: { backgroundColor: "#003F91" },
+  pending: { backgroundColor: "#FF6663" },
+
+  sectionTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-    textAlign: "center",
+    fontWeight: "700",
+    marginTop: 20,
+    marginBottom: 12,
   },
-  successScroll: {
-    paddingLeft: 5,
-  },
+
   successCard: {
-    padding: 12,
-    borderRadius: 12,
-    marginRight: 10,
-    width: 180,
-    height: 100,
-    justifyContent: "center",
+    flexDirection: "row",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
   },
-  successText: {
-    fontSize: 13,
-    padding: 5,
+
+  successLine: {
+    width: 4,
+    borderRadius: 4,
+    backgroundColor: "#27e22dff",
+    marginRight: 12,
   },
-  factBox: {
-    borderRadius: 10,
-    padding: 20,
-    marginHorizontal: 20,
-    marginBottom: 30,
-  },
-  factTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  factText: {
+
+  successTitle: {
     fontSize: 15,
-    textAlign: "center",
+    fontWeight: "600",
+  },
+
+  successMeta: {
+    fontSize: 12,
+    marginTop: 2,
+    opacity: 0.8,
+  },
+
+  successDesc: {
+    fontSize: 13,
+    marginTop: 6,
+    opacity: 0.9,
   },
 });
-
-export default ExploreScreen;
