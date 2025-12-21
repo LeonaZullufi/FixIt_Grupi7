@@ -26,36 +26,54 @@ export default function SettingItem({
         { backgroundColor: colors.background },
       ]}
     >
-      <View style={styles.settingItem}>
-        <View style={styles.settingLeft}>
-          <Feather
-            name={item.icon}
-            size={20}
-            color={item.isLogout ? "#FF3B30" : colors.text}
-          />
-          <Text
-            style={[
-              styles.settingText,
-              { color: item.isLogout ? "#FF3B30" : colors.text },
-              item.isLogout && styles.logoutText,
-            ]}
-          >
-            {item.label}
-          </Text>
-        </View>
-
-        {item.type === "switch" ? (
+      {item.type === "switch" ? (
+        <View style={styles.settingItem}>
+          <View style={styles.settingLeft}>
+            <Feather
+              name={item.icon}
+              size={20}
+              color={item.isLogout ? "#FF3B30" : colors.text}
+            />
+            <Text
+              style={[
+                styles.settingText,
+                { color: item.isLogout ? "#FF3B30" : colors.text },
+                item.isLogout && styles.logoutText,
+              ]}
+            >
+              {item.label}
+            </Text>
+          </View>
           <Switch
             value={item.value}
             onValueChange={setNotifications}
             thumbColor="#fff"
             trackColor={{ true: colors.tabActive, false: "#ccc" }}
           />
-        ) : (
-          <TouchableOpacity
-            onPress={() => handleSettingPress(item)}
-            style={styles.settingRight}
-          >
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={styles.settingItem}
+          onPress={() => handleSettingPress(item)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.settingLeft}>
+            <Feather
+              name={item.icon}
+              size={20}
+              color={item.isLogout ? "#FF3B30" : colors.text}
+            />
+            <Text
+              style={[
+                styles.settingText,
+                { color: item.isLogout ? "#FF3B30" : colors.text },
+                item.isLogout && styles.logoutText,
+              ]}
+            >
+              {item.label}
+            </Text>
+          </View>
+          <View style={styles.settingRight}>
             {item.label === "Gjuha" ? (
               <Text
                 style={[styles.settingValue, { color: colors.textSecondary }]}
@@ -82,9 +100,9 @@ export default function SettingItem({
               size={18}
               color={item.isLogout ? "#FF3B30" : colors.textSecondary}
             />
-          </TouchableOpacity>
-        )}
-      </View>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {expandedSetting === item.id && item.label === "Gjuha" && (
         <DropdownList
