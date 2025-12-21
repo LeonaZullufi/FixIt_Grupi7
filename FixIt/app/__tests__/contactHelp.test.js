@@ -1,72 +1,100 @@
 import React from 'react';
-import renderer, { act } from 'react-test-renderer';
-import { NavigationContainer } from '@react-navigation/native';
-import { ThemeProvider } from '../../context/themeContext';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import ContactScreen from '../(tabs)/ContactsHelp'; 
+import { Alert } from 'react-native';
+// bojeni kete per t'i printuar infromata rreth testeve:  npm test -- --verbose
 
-jest.mock('@react-native-async-storage/async-storage', () =>
-  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
-);
+jest.mock("../../components/contacts/AboutAppComponent", () => {
+  const { Text } = require('react-native');
+  return () => <Text>AboutAppComponent Mock</Text>;
+});
+jest.mock("../../components/contacts/FAQSectionComponent", () => {
+  const { Text } = require('react-native');
+  return () => <Text>FAQSectionComponent Mock</Text>;
+});
+jest.mock("../../components/contacts/ContactSection", () => {
+  const { Text } = require('react-native');
+  return () => <Text>ContactSection Mock</Text>;
+});
+jest.mock("../../components/contacts/AppInfo", () => {
+  const { Text } = require('react-native');
+  return () => <Text>AppInfo Mock</Text>;
+});
 
-jest.mock('../../firebase', () => ({
-  auth: {
-    currentUser: { uid: 'test-user-123', email: 'test@example.com' },
-    onAuthStateChanged: jest.fn((callback) => {
-      callback({ uid: 'test-user-123', email: 'test@example.com' });
-      return () => {};
-    }),
-  },
-  db: {},
-}), { virtual: true });
-
-jest.mock('firebase/firestore', () => ({
-  doc: jest.fn(),
-  getDoc: jest.fn(() => Promise.resolve({
-    exists: () => true,
-    data: () => ({ firstName: 'Filan', lastName: 'Fisteku' })
-  })),
-  collection: jest.fn(),
-  addDoc: jest.fn(),
-  serverTimestamp: jest.fn(() => 'mock-timestamp'),
-}), { virtual: true });
-
-jest.mock('@react-navigation/native', () => ({
-  ...jest.requireActual('@react-navigation/native'),
-  useNavigation: () => ({
-    setOptions: jest.fn(),
-  }),
-}));
 
 jest.mock('@expo/vector-icons', () => ({
   Ionicons: 'Ionicons',
 }));
 
-jest.mock('../../components/contacts/AboutAppComponent', () => 'AboutAppComponent');
-jest.mock('../../components/contacts/FAQSectionComponent', () => 'FAQSectionComponent');
-jest.mock('../../components/contacts/ContactSection', () => 'ContactSection');
-jest.mock('../../components/contacts/AppInfo', () => 'AppInfo');
+jest.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({ setOptions: jest.fn() }),
+}));
 
-jest.mock('react-native-keyboard-aware-scroll-view', () => {
-  const { View } = require('react-native');
-  return {
-    KeyboardAwareScrollView: View,
-  };
-});
+jest.mock('react-native-keyboard-aware-scroll-view', () => ({
+  KeyboardAwareScrollView: ({ children }) => children,
+}));
 
-describe('ContactScreen Snapshot', () => {
-  it('renders correctly when user is logged in', async () => {
-    let tree;
+jest.mock('../../context/themeContext', () => ({
+  useTheme: () => ({
+    colors: { background: '#fff', text: '#000', border: '#ccc', card: '#eee', textSecondary: '#666', tabBar: '#000' },
+    theme: 'light'
+  }),
+}));
 
-    await act(async () => {
-      tree = renderer.create(
-        <NavigationContainer>
-          <ThemeProvider>
-            <ContactScreen />
-          </ThemeProvider>
-        </NavigationContainer>
+
+jest.mock('../../firebase', () => ({
+  auth: {
+    currentUser: null,
+    onAuthStateChanged: jest.fn((cb) => cb(null)),
+  },
+  db: {},
+}));
+
+jest.mock('firebase/firestore', () => ({
+  doc: jest.fn(),
+  getDoc: jest.fn(),
+  collection: jest.fn(),
+  addDoc: jest.fn(() => Promise.resolve({ id: '123' })),
+  serverTimestamp: jest.fn(),
+}));
+
+
+const spyOnAlert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+describe('ContactScreen Testing', () => {
+  
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('shfaq gabime kur fushata lihen bosh dhe shtypet dërgimi', async () => {
+    const { getByText } = render(<ContactScreen />);
+    
+    const submitButton = getByText('Dërgo Mesazhin');
+    fireEvent.press(submitButton);
+
+    expect(spyOnAlert).toHaveBeenCalledWith(
+      "Gabime në Formular",
+      expect.stringContaining("Mesazhi duhet të ketë të paktën 6 karaktere.")
+    );
+  });
+
+  it('lejon plotësimin e fushave dhe dërgimin me sukses', async () => {
+    const { getByPlaceholderText, getByText } = render(<ContactScreen />);
+
+    fireEvent.changeText(getByPlaceholderText('Emri'), 'Filan');
+    fireEvent.changeText(getByPlaceholderText('Mbiemri'), 'Fisteku');
+    fireEvent.changeText(getByPlaceholderText('Email'), 'filan@test.com');
+    fireEvent.changeText(getByPlaceholderText('Mesazhi (min. 6 karaktere)'), 'Ky është një mesazh testues.');
+
+    const submitButton = getByText('Dërgo Mesazhin');
+    fireEvent.press(submitButton);
+
+    await waitFor(() => {
+      expect(spyOnAlert).toHaveBeenCalledWith(
+        "Sukses!",
+        expect.stringContaining("Mesazhi juaj u dërgua me sukses")
       );
     });
-
-    expect(tree.toJSON()).toMatchSnapshot();
   });
 });
