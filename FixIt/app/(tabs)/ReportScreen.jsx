@@ -49,13 +49,27 @@ const getAddressFromCoords = async (lat, lon) => {
   }
 };
 
+const getPinColor = (status) => {
+  switch (status) {
+    case "pending":
+      return "red";
+    case "in_progress":
+      return "orange";
+    case "completed":
+      return "green";
+    default:
+      return "red";
+  }
+};
+
 const ReportMarker = React.memo(({ report, onPress }) => (
   <Marker
     coordinate={{ latitude: report.latitude, longitude: report.longitude }}
-    pinColor={report.finished ? "green" : "red"}
+    pinColor={getPinColor(report.status)}
     onPress={() => onPress(report)}
   />
 ));
+
 
 export default function ReportScreen() {
   const navigation = useNavigation();
@@ -222,15 +236,15 @@ export default function ReportScreen() {
 
     try {
       await addDoc(collection(db, "reports"), {
-        latitude: pinLocation.latitude,
-        longitude: pinLocation.longitude,
-        placeName,
-        photoBase64,
-        description,
-        userEmail: user.email,
-        createdAt: Date.now(),
-        finished: false,
-      });
+  latitude: pinLocation.latitude,
+  longitude: pinLocation.longitude,
+  placeName,
+  photoBase64,
+  description,
+  userEmail: user.email,
+  createdAt: Date.now(),
+  status: "pending", // ✅ GJITHMONË NË PRITJE
+});
 
       setPhotoUri(null);
       setPhotoBase64(null);
@@ -246,10 +260,6 @@ export default function ReportScreen() {
     }
   }, [canSend, pinLocation, photoBase64, description, placeName]);
 
-  const activeReports = useMemo(
-    () => reports.filter((r) => !r.finished),
-    [reports]
-  );
 
   const openReport = useCallback((r) => setOpenedReport(r), []);
 
@@ -280,9 +290,10 @@ export default function ReportScreen() {
             }}
           >
             {pinLocation && <Marker coordinate={pinLocation} pinColor="blue" />}
-            {activeReports.map((r) => (
-              <ReportMarker key={r.id} report={r} onPress={openReport} />
-            ))}
+           {reports.map((r) => (
+  <ReportMarker key={r.id} report={r} onPress={openReport} />
+))}
+
           </MapView>
 
           {!photoUri && (
