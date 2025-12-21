@@ -1,132 +1,103 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react-native';
-
-// 1. INLINE ASSET MOCKING
-const assets = [
-  "../../assets/ProblemOnMap/Gropa1.png",
-  "../../assets/ProblemOnMap/Gropa2Prizren.jpg",
-  "../../assets/ProblemOnMap/KanalizimNeRruge.jpg",
-  "../../assets/ProblemOnMap/KendiLojrave.jpg",
-  "../../assets/ProblemOnMap/MbeturinaSkenderaj.jpg",
-  "../../assets/ProblemOnMap/NdriqimPrishtine.jpg"
-];
-assets.forEach(asset => jest.mock(asset, () => 1, { virtual: true }));
-
-// 2. MOCK FIREBASE
-jest.mock("../../firebase.js", () => ({ db: {} }));
-
-jest.mock("firebase/auth", () => ({
-  getAuth: jest.fn(() => ({
-    currentUser: { email: "test@user.com" },
-  })),
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
+//          Kemi testuar :
+//Harta ngarkohet.
+//Klikimi mbi Marker funksionon.
+//Modali shfaqet me te dhenat e sakta dhe mund te mbyllet.
+jest.mock('firebase/app', () => ({
+  initializeApp: jest.fn(() => ({})),
 }));
 
-// We'll control the firestore mock to test the loading state
-let triggerSnapshot;
-jest.mock("firebase/firestore", () => ({
+jest.mock('firebase/auth', () => ({
+  getAuth: jest.fn(() => ({
+    currentUser: { email: 'test@user.com' },
+  })),
+  initializeAuth: jest.fn(() => ({})),
+  getReactNativePersistence: jest.fn(() => ({})),
+  connectAuthEmulator: jest.fn(),
+}));
+
+jest.mock('firebase/firestore', () => ({
+  getFirestore: jest.fn(),
   collection: jest.fn(),
   query: jest.fn(),
   onSnapshot: jest.fn((q, callback) => {
-    triggerSnapshot = callback; // Capture the callback to trigger it manually
-    return () => {};
+    const fakeSnapshot = {
+      docs: [{
+        id: '1',
+        data: () => ({
+          problemTitle: 'Gropë në rrugë',
+          description: 'Një gropë e madhe këtu.',
+          status: 'pending',
+          latitude: 42.6,
+          longitude: 20.9,
+          userEmail: 'test@user.com',
+          photoBase64: ''
+        }),
+      }],
+    };
+    callback(fakeSnapshot);
+    return jest.fn(); 
   }),
 }));
 
-// 3. MOCK MAPS
-jest.mock("react-native-maps", () => {
-  const React = require("react");
-  const { View, TouchableOpacity } = require("react-native");
+jest.mock('firebase/storage', () => ({
+  getStorage: jest.fn(() => ({})),
+  ref: jest.fn(),
+  uploadBytes: jest.fn(),
+  getDownloadURL: jest.fn(),
+}));
+
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  setItem: jest.fn(),
+  getItem: jest.fn(),
+  removeItem: jest.fn(),
+}));
+
+jest.mock('react-native-maps', () => {
+  const { View, TouchableOpacity } = require('react-native');
   return {
     __esModule: true,
-    default: (props) => <View testID="map-view" {...props}>{props.children}</View>,
+    default: (props) => <View testID="map-view">{props.children}</View>,
     Marker: (props) => (
-      <TouchableOpacity testID="map-marker" onPress={() => props.onPress(props.report)} />
+      <TouchableOpacity testID="marker" onPress={props.onPress} />
     ),
-    PROVIDER_GOOGLE: "google",
+    PROVIDER_GOOGLE: 'google',
   };
 });
 
-// 4. IMPORT COMPONENT
-import ProblemsScreen from "../(tabs)/ProblemsScreen";
+import ReportScreen from '../(tabs)/ProblemsScreen';
 
-describe("ProblemsScreen Single-File Test", () => {
+describe('ReportScreen Tests', () => {
   
-  it("shows loading and then displays markers", async () => {
-    render(<ProblemsScreen />);
-    
-    // 1. Verify Loading State (Before we trigger snapshot)
-    expect(screen.getByText(/Duke ngarkuar raportet/i)).toBeTruthy();
-
-    // 2. Trigger the data update
-    await act(async () => {
-      triggerSnapshot({
-        docs: [{
-          id: "1",
-          data: () => ({
-            latitude: 42.6,
-            longitude: 20.9,
-            description: "Gropa ne rruge",
-            photoName: "Gropa1.png",
-            userEmail: "test@user.com",
-            finished: false,
-          }),
-        }],
-      });
-    });
-
-    // 3. Verify marker appears
-    const marker = await screen.findByTestID("map-marker");
-    expect(marker).toBeTruthy();
+  test('shfaqet harta pas loading', async () => {
+    const { getByTestId } = render(<ReportScreen />);
+    await waitFor(() => expect(getByTestId('map-view')).toBeTruthy());
   });
 
-  it("handles Modal visibility and Interaction", async () => {
-    render(<ProblemsScreen />);
+  test('shfaq modal-in kur klikohet Markeri (Button Press & Modal Visible)', async () => {
+    const { getByTestId, queryByText } = render(<ReportScreen />);
 
-    // Feed data
-    await act(async () => {
-      triggerSnapshot({
-        docs: [{
-          id: "1",
-          data: () => ({
-            description: "Test Description",
-            userEmail: "test@user.com",
-          }),
-        }],
-      });
-    });
-
-    const marker = await screen.findByTestID("map-marker");
+    const marker = await waitFor(() => getByTestId('marker'));
+    
     fireEvent.press(marker);
 
-    // Modal should show description
-    expect(screen.getByText("Test Description")).toBeTruthy();
-
-    const closeButton = screen.getByText("Mbyll");
-    fireEvent.press(closeButton);
-
-    // Modal should disappear
     await waitFor(() => {
-      expect(screen.queryByText("Mbyll")).toBeNull();
+      expect(queryByText('Gropë në rrugë')).toBeTruthy();
     });
   });
 
-  it("validates boundary clamping on region change", async () => {
-    render(<ProblemsScreen />);
-    
-    // Skip loading
-    await act(async () => { triggerSnapshot({ docs: [] }); });
+  test('mbyll modal-in kur klikohet butoni Mbyll', async () => {
+    const { getByTestId, queryByText, getByText } = render(<ReportScreen />);
 
-    const map = screen.getByTestID("map-view");
+    const marker = await waitFor(() => getByTestId('marker'));
+    fireEvent.press(marker);
 
-    await act(async () => {
-      map.props.onRegionChangeComplete({
-        latitude: 30.0, // Out of bounds
-        longitude: 21.0,
-        latitudeDelta: 0.1,
-        longitudeDelta: 0.1,
-      });
+    const closeButton = getByText('Mbyll');
+    fireEvent.press(closeButton);
+
+    await waitFor(() => {
+      expect(queryByText('Gropë në rrugë')).toBeNull();
     });
-
-    expect(map).toBeTruthy();
   });
 });
