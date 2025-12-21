@@ -7,7 +7,7 @@ import {
   ProfileHeader,
   LoadingView,
   FormInput,
-} from "../../components/profile";
+} from "../../components/editProfile";
 
 const EditProfile = memo(() => {
   const { colors } = useTheme();
