@@ -19,12 +19,11 @@ import {
   Platform,
   ActivityIndicator,
   FlatList,
+  Alert,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useNavigation } from "expo-router";
 import { useTheme } from "../../context/themeContext";
-
-// FIREBASE
 import { auth, db } from "../../firebase";
 import {
   collection,
@@ -34,34 +33,26 @@ import {
   where,
 } from "firebase/firestore";
 
-
-
 const getAddressFromCoords = async (lat, lon) => {
   try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=sq`;
-    const res = await fetch(url, {
-      headers: { "User-Agent": "FixItApp/1.0" },
-    });
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=sq`,
+      { headers: { "User-Agent": "FixItApp/1.0" } }
+    );
     const data = await res.json();
-    return data.display_name || "Adresë e panjohur";
+    return data.display_name || "";
   } catch {
-    return "Adresë e panjohur";
+    return "";
   }
 };
 
-
-
 const ReportMarker = React.memo(({ report, onPress }) => (
   <Marker
-    coordinate={{
-      latitude: report.latitude,
-      longitude: report.longitude,
-    }}
+    coordinate={{ latitude: report.latitude, longitude: report.longitude }}
     pinColor={report.finished ? "green" : "red"}
     onPress={() => onPress(report)}
   />
 ));
-
 
 export default function ReportScreen() {
   const navigation = useNavigation();
@@ -72,16 +63,12 @@ export default function ReportScreen() {
   const [description, setDescription] = useState("");
   const [pinLocation, setPinLocation] = useState(null);
   const [placeName, setPlaceName] = useState("");
-
   const [reports, setReports] = useState([]);
   const [openedReport, setOpenedReport] = useState(null);
-
   const [loading, setLoading] = useState(false);
   const [loadingReports, setLoadingReports] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
-
-  
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -91,8 +78,6 @@ export default function ReportScreen() {
       headerTintColor: "white",
     });
   }, []);
-
-
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -113,58 +98,97 @@ export default function ReportScreen() {
         setLoadingReports(false);
       },
       () => {
-        setErrorMessage("Nuk u lexuan raportet.");
         setLoadingReports(false);
+        setErrorMessage("Nuk u lexuan raportet.");
       }
     );
 
     return unsub;
   }, []);
 
-
+  const processImage = async (uri) => {
+    setPhotoUri(uri);
+    const res = await fetch(uri);
+    const blob = await res.blob();
+    const reader = new FileReader();
+    reader.onload = () => setPhotoBase64(reader.result.split(",")[1]);
+    reader.readAsDataURL(blob);
+  };
 
   const takePhoto = useCallback(async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      setErrorMessage("Duhet leje për kamerën!");
-      return;
-    }
+    if (!permission.granted) return;
 
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
-      quality: 0.7, 
+      quality: 0.7,
     });
 
     if (!result.canceled) {
-      const uri = result.assets[0].uri;
-      setPhotoUri(uri);
-
-      const res = await fetch(uri);
-      const blob = await res.blob();
-      const reader = new FileReader();
-      reader.onload = () =>
-        setPhotoBase64(reader.result.split(",")[1]);
-      reader.readAsDataURL(blob);
+      await processImage(result.assets[0].uri);
     }
   }, []);
 
- 
+  const pickFromGallery = useCallback(async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
 
-  const placePin = useCallback(
-    async (e) => {
-      const { latitude, longitude } = e.nativeEvent.coordinate;
-      setPinLocation({ latitude, longitude });
-      setPlaceName(await getAddressFromCoords(latitude, longitude));
-      await takePhoto();
-    },
-    [takePhoto]
-  );
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      quality: 0.7,
+    });
 
+    if (!result.canceled) {
+      await processImage(result.assets[0].uri);
+    }
+  }, []);
+
+  const openPhotoPicker = useCallback(() => {
+    Alert.alert(
+      "Zgjidh foton",
+      "",
+      [
+        { text: "Kamera", onPress: takePhoto },
+        { text: "Gallery", onPress: pickFromGallery },
+        { text: "Anulo", style: "cancel" },
+      ]
+    );
+  }, [takePhoto, pickFromGallery]);
+
+  const removePhoto = useCallback(() => {
+    Alert.alert(
+      "Largo foton",
+      "A je i sigurt?",
+      [
+        { text: "Anulo", style: "cancel" },
+        {
+          text: "Largo",
+          style: "destructive",
+          onPress: () => {
+            setPhotoUri(null);
+            setPhotoBase64(null);
+          },
+        },
+      ]
+    );
+  }, []);
+
+  const placePin = useCallback(async (e) => {
+    const { latitude, longitude } = e.nativeEvent.coordinate;
+    setPinLocation({ latitude, longitude });
+    setPlaceName(await getAddressFromCoords(latitude, longitude));
+  }, []);
+
+  const canSend = useMemo(() => {
+    return !!(
+      pinLocation &&
+      photoBase64 &&
+      description.trim().length > 0
+    );
+  }, [pinLocation, photoBase64, description]);
 
   const sendReport = useCallback(async () => {
-    if (!pinLocation || !photoBase64 || !description.trim()) {
-      return setErrorMessage("Plotëso vendin, foton dhe përshkrimin!");
-    }
+    if (!canSend) return;
 
     const user = auth.currentUser;
     if (!user) return;
@@ -188,27 +212,20 @@ export default function ReportScreen() {
       setDescription("");
       setPinLocation(null);
       setPlaceName("");
-
       setSuccessMessage("Raporti u dërgua me sukses!");
     } catch {
       setErrorMessage("Gabim gjatë dërgimit.");
     } finally {
       setLoading(false);
     }
-  }, [pinLocation, photoBase64, description, placeName]);
-
-  
+  }, [canSend, pinLocation, photoBase64, description, placeName]);
 
   const activeReports = useMemo(
     () => reports.filter((r) => !r.finished),
     [reports]
   );
 
-  const openReport = useCallback((report) => {
-    setOpenedReport(report);
-  }, []);
-
-
+  const openReport = useCallback((r) => setOpenedReport(r), []);
 
   return (
     <KeyboardAvoidingView
@@ -223,14 +240,9 @@ export default function ReportScreen() {
         <View style={styles.container}>
           <Text style={styles.title}>Raporto një problem</Text>
 
-          {loadingReports && (
-            <ActivityIndicator size="small" color="#0077b6" />
-          )}
-
+          {loadingReports && <ActivityIndicator color="#0077b6" />}
           {errorMessage && <Text style={styles.error}>{errorMessage}</Text>}
-          {successMessage && (
-            <Text style={styles.success}>{successMessage}</Text>
-          )}
+          {successMessage && <Text style={styles.success}>{successMessage}</Text>}
 
           <MapView
             style={styles.map}
@@ -242,24 +254,41 @@ export default function ReportScreen() {
               longitudeDelta: 0.01,
             }}
           >
-            {pinLocation && (
-              <Marker coordinate={pinLocation} pinColor="blue" />
-            )}
-
+            {pinLocation && <Marker coordinate={pinLocation} pinColor="blue" />}
             {activeReports.map((r) => (
-              <ReportMarker
-                key={r.id}
-                report={r}
-                onPress={openReport}
-              />
+              <ReportMarker key={r.id} report={r} onPress={openReport} />
             ))}
           </MapView>
 
+          {!photoUri && (
+            <TouchableOpacity
+              style={styles.cameraMainBtn}
+              onPress={openPhotoPicker}
+            >
+              <Text style={styles.photoMainText}>📸 Shto foto</Text>
+            </TouchableOpacity>
+          )}
+
           {photoUri && (
-            <Image
-              source={{ uri: photoUri }}
-              style={styles.previewImage}
-            />
+            <View style={styles.photoContainer}>
+              <Image source={{ uri: photoUri }} style={styles.previewImage} />
+
+              <View style={styles.photoActions}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.changeBtn]}
+                  onPress={openPhotoPicker}
+                >
+                  <Text style={styles.actionText}>🔄 Ndrysho</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.deleteBtn]}
+                  onPress={removePhoto}
+                >
+                  <Text style={styles.actionText}>❌ Largo</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
 
           <TextInput
@@ -275,44 +304,35 @@ export default function ReportScreen() {
           )}
 
           <TouchableOpacity
-            style={styles.sendButton}
+            style={[styles.sendButton, { opacity: canSend ? 1 : 0.5 }]}
             onPress={sendReport}
-            disabled={loading}
+            disabled={!canSend || loading}
           >
             <Text style={styles.sendText}>
               {loading ? "Duke dërguar..." : "Dërgo Raportin"}
             </Text>
           </TouchableOpacity>
 
-        
-
           <Modal visible={openedReport !== null} animationType="slide">
             {openedReport && (
               <FlatList
                 data={[openedReport]}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(i) => i.id}
                 renderItem={({ item }) => (
                   <View style={{ padding: 20 }}>
                     <Image
-                      source={{
-                        uri: `data:image/jpeg;base64,${item.photoBase64}`,
-                      }}
+                      source={{ uri: `data:image/jpeg;base64,${item.photoBase64}` }}
                       style={styles.modalImage}
                     />
-                    <Text style={{ marginTop: 15 }}>
-                      📝 {item.description}
-                    </Text>
+                    <Text style={{ marginTop: 15 }}>{item.description}</Text>
                     <Text style={{ marginTop: 10, color: "gray" }}>
-                      📍 {item.placeName}
+                      {item.placeName}
                     </Text>
-
                     <TouchableOpacity
                       style={styles.closeBtn}
                       onPress={() => setOpenedReport(null)}
                     >
-                      <Text style={{ color: "white", textAlign: "center" }}>
-                        Mbyll
-                      </Text>
+                      <Text style={styles.closeText}>Mbyll</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -325,7 +345,6 @@ export default function ReportScreen() {
   );
 }
 
-
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 45 },
   title: {
@@ -335,13 +354,54 @@ const styles = StyleSheet.create({
     color: "#023e8a",
   },
   map: { height: 300, width: "100%", marginTop: 10 },
+
+  cameraMainBtn: {
+    backgroundColor: "#0077b6",
+    marginHorizontal: 50,
+    marginTop: 15,
+    paddingVertical: 15,
+    borderRadius: 25,
+    alignItems: "center",
+  },
+  photoMainText: { color: "white", fontSize: 17, fontWeight: "600" },
+
+  photoContainer: { alignItems: "center", marginTop: 15 },
+
   previewImage: {
     width: "90%",
     height: 200,
-    alignSelf: "center",
-    marginTop: 15,
     borderRadius: 15,
   },
+
+  photoActions: {
+    flexDirection: "row",
+    width: "90%",
+    marginTop: 12,
+  },
+
+  actionBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+
+  changeBtn: {
+    backgroundColor: "#0077b6",
+    marginRight: 8,
+  },
+
+  deleteBtn: {
+    backgroundColor: "#7a3737ff",
+    marginLeft: 8,
+  },
+
+  actionText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
   input: {
     borderWidth: 1,
     borderColor: "#aaa",
@@ -351,12 +411,14 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: "white",
   },
+
   address: {
     textAlign: "center",
     marginTop: 10,
     color: "#0077b6",
     fontWeight: "bold",
   },
+
   sendButton: {
     backgroundColor: "#00b4d8",
     marginHorizontal: 50,
@@ -364,14 +426,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginTop: 10,
   },
+
   sendText: { textAlign: "center", color: "white", fontSize: 18 },
+
   error: { textAlign: "center", color: "red", marginTop: 10 },
   success: { textAlign: "center", color: "green", marginTop: 10 },
+
   modalImage: { width: "100%", height: 300, borderRadius: 15 },
+
   closeBtn: {
     marginTop: 25,
     backgroundColor: "#023e8a",
     padding: 15,
     borderRadius: 10,
   },
+
+  closeText: { color: "white", textAlign: "center", fontSize: 16 },
 });
