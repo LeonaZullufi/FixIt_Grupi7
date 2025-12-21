@@ -54,3 +54,36 @@
 3.  Navigimi dhe UI
     Navigimi është plotësisht funksional nëpër të gjitha faqet kryesore.Gjithashtu Janë bërë përmirësime në UI për një përvojë më të mirë të përdoruesit.
 
+##  **Faza 3**
+
+1. Karakteristikat Teknikat
+    * Aplikacioni integron module të avancuara të pajisjes për një eksperiencë interaktive:
+        * **Camera / Image Picker:** Përdorimi i `expo-image-picker` për qasje në galeri dhe shkrepjen e fotove gjatë raportimit të një problemi në dritaren "ReportScreen"
+        * **Local Notifications:** Menaxhimi i njoftimeve lokale përmes `expo-notifications`.
+        * **GPS / Location:** Integrimi i `expo-location` për marrjen e koordinatave gjeografike në kohë reale për shfaqjen e problemeve ne hartë siq është dritarja "ReportScreen" dhe "ReportScreen"
+2. UI / UX dhe Dizajni
+    * Ndërfaqja është ndërtuar duke pasur parasysh pastërtinë dhe përdorshmërinë:
+        * **Layout Profesional:** Konsistencë në paletën e ngjyrave, spacing (hapësirat) dhe padding.
+        * **Keyboard Management:** Përdorimi i `KeyboardAwareScrollView` për të garantuar që inputet të mbeten të dukshme gjatë shkrimit.
+        * **Animacionet:**
+            * **Button Press:** Efekte `fade` të modalit tek dritarja "Raportimet" duke përdorur `TouchableOpacity`.
+            * **Modals:** Janë përdorur për të shfaqur informacionet rreth raportimeve
+            * **Task Feedback:** Animacione vizuale pas përfundimit të veprimeve (psh. dërgimi i një forme apo raportimi).
+3. Optimizimi dhe Performanca
+    * Për të siguruar që aplikacioni të jetë i shpejtë dhe efikas, janë përdorur teknikat e mëposhtme:
+        1. Renderimi i Listave
+            * Përdorimi i **FlatList** në vend të ScrollView tek dritarja "ReportScreen".
+        2. React Memoization
+            * **useCallback:** Përdoret për funksionet që u kalohen komponentëve fëmijë (child components) për të shmangur ri-renderimet e panevojshme.
+            * **useMemo:** Ruajtja e vlerave të llogaritura që nuk ndryshojnë shpesh tek "ReportScreen" dhe "useProfilForm"
+            * **React.memo:** Memoizimi i komponentëve statikë për të rritur shpejtësinë e UI.
+        3. Assets
+            * **Asset Optimization:** Kompresim i imazheve dhe teknika *lazy load* ku është e aplikueshme.
+
+4. Testimi (Testing)
+    * Projekti përfshin mbulimin me teste bazike duke përdorur Jest dhe React Native Testing Library:
+        1.  **Snapshot Tests:** Verifikimi i strukturës së UI dhe ruajtja e snapshots për komponentët kryesorë.
+        2.  **Interaction Tests:** * Testimi i shtypjes së butonave (Button press).
+            * Validimi i inputeve të formave.
+            * Kontrolli i dukshmërisë së modaleve.
+        3.  **Mocking:** Përdorimi i funksioneve *mock* për të testuar logjikën pa pasur nevojë për qasje reale në API apo hardware.
