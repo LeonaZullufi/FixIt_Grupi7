@@ -31,21 +31,34 @@ export default function ProfileScreen() {
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      headerStatusBarHeight: 10,
       headerTitle: "Profil",
       headerRight: () => (
         <TouchableOpacity
           onPress={() => setIsModalVisible(true)}
-          style={{ marginRight: 50 }}
+          style={{
+            marginRight: 15,
+            height: "100%",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
         >
-          <Ionicons name="settings-outline" size={24} color={"white"} />
+          <Ionicons name="settings-outline" size={25} color={"white"} />
         </TouchableOpacity>
       ),
       headerStyle: {
         backgroundColor: colors.tabBar,
-        height: 75,
+        height: 35,
+      },
+      headerTitleStyle: {
+        fontSize: 18,
+        fontWeight: "bold",
+        includeFontPadding: false,
+        marginTop: 5,
       },
       headerTitleAlign: "center",
       headerTintColor: "white",
+      headerStatusBarHeight: 0,
     });
   }, [navigation, colors.tabInactive, colors.tabBar, colors.text]);
 
