@@ -19,7 +19,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  FlatList,
   Alert,
   Animated,
   Easing,
@@ -70,11 +69,11 @@ const ReportMarker = React.memo(({ report, onPress }) => (
   />
 ));
 
-
 export default function ReportScreen() {
   const navigation = useNavigation();
   const { colors } = useTheme();
 
+  const [problemTitle, setProblemTitle] = useState("");
   const [photoUri, setPhotoUri] = useState(null);
   const [photoBase64, setPhotoBase64] = useState(null);
   const [description, setDescription] = useState("");
@@ -125,13 +124,9 @@ export default function ReportScreen() {
     return unsub;
   }, []);
 
-  const processImage = async (uri) => {
-    setPhotoUri(uri);
-    const res = await fetch(uri);
-    const blob = await res.blob();
-    const reader = new FileReader();
-    reader.onload = () => setPhotoBase64(reader.result.split(",")[1]);
-    reader.readAsDataURL(blob);
+  const processImage = (asset) => {
+    setPhotoUri(asset.uri);
+    setPhotoBase64(asset.base64);
   };
 
   const takePhoto = useCallback(async () => {
@@ -141,11 +136,10 @@ export default function ReportScreen() {
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       quality: 0.7,
+      base64: true,
     });
 
-    if (!result.canceled) {
-      await processImage(result.assets[0].uri);
-    }
+    if (!result.canceled) processImage(result.assets[0]);
   }, []);
 
   const pickFromGallery = useCallback(async () => {
@@ -155,41 +149,32 @@ export default function ReportScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,
       quality: 0.7,
+      base64: true,
     });
 
-    if (!result.canceled) {
-      await processImage(result.assets[0].uri);
-    }
+    if (!result.canceled) processImage(result.assets[0]);
   }, []);
 
   const openPhotoPicker = useCallback(() => {
-    Alert.alert(
-      "Zgjidh foton",
-      "",
-      [
-        { text: "Kamera", onPress: takePhoto },
-        { text: "Gallery", onPress: pickFromGallery },
-        { text: "Anulo", style: "cancel" },
-      ]
-    );
+    Alert.alert("Zgjidh foton", "", [
+      { text: "Kamera", onPress: takePhoto },
+      { text: "Gallery", onPress: pickFromGallery },
+      { text: "Anulo", style: "cancel" },
+    ]);
   }, [takePhoto, pickFromGallery]);
 
   const removePhoto = useCallback(() => {
-    Alert.alert(
-      "Largo foton",
-      "A je i sigurt?",
-      [
-        { text: "Anulo", style: "cancel" },
-        {
-          text: "Largo",
-          style: "destructive",
-          onPress: () => {
-            setPhotoUri(null);
-            setPhotoBase64(null);
-          },
+    Alert.alert("Largo foton", "A je i sigurt?", [
+      { text: "Anulo", style: "cancel" },
+      {
+        text: "Largo",
+        style: "destructive",
+        onPress: () => {
+          setPhotoUri(null);
+          setPhotoBase64(null);
         },
-      ]
-    );
+      },
+    ]);
   }, []);
 
   const placePin = useCallback(async (e) => {
@@ -198,13 +183,16 @@ export default function ReportScreen() {
     setPlaceName(await getAddressFromCoords(latitude, longitude));
   }, []);
 
-  const canSend = useMemo(() => {
-    return !!(
-      pinLocation &&
-      photoBase64 &&
-      description.trim().length > 0
-    );
-  }, [pinLocation, photoBase64, description]);
+  const canSend = useMemo(
+    () =>
+      !!(
+        pinLocation &&
+        photoBase64 &&
+        description.trim().length > 0 &&
+        problemTitle.trim().length > 0
+      ),
+    [pinLocation, photoBase64, description, problemTitle]
+  );
 
   const showSuccessPopup = () => {
     setShowSuccess(true);
@@ -228,40 +216,36 @@ export default function ReportScreen() {
 
   const sendReport = useCallback(async () => {
     if (!canSend) return;
-
     const user = auth.currentUser;
     if (!user) return;
 
     setLoading(true);
-
     try {
       await addDoc(collection(db, "reports"), {
-  latitude: pinLocation.latitude,
-  longitude: pinLocation.longitude,
-  placeName,
-  photoBase64,
-  description,
-  userEmail: user.email,
-  createdAt: Date.now(),
-  status: "pending", // ✅ GJITHMONË NË PRITJE
-});
+        problemTitle,
+        latitude: pinLocation.latitude,
+        longitude: pinLocation.longitude,
+        placeName,
+        photoBase64,
+        description,
+        userEmail: user.email,
+        createdAt: Date.now(),
+        status: "pending",
+      });
 
+      setProblemTitle("");
       setPhotoUri(null);
       setPhotoBase64(null);
       setDescription("");
       setPinLocation(null);
       setPlaceName("");
-
       showSuccessPopup();
     } catch {
       setErrorMessage("Gabim gjatë dërgimit.");
     } finally {
       setLoading(false);
     }
-  }, [canSend, pinLocation, photoBase64, description, placeName]);
-
-
-  const openReport = useCallback((r) => setOpenedReport(r), []);
+  }, [canSend, problemTitle, pinLocation, photoBase64, description, placeName]);
 
   return (
     <KeyboardAvoidingView
@@ -279,32 +263,29 @@ export default function ReportScreen() {
           {loadingReports && <ActivityIndicator color="#0077b6" />}
           {errorMessage && <Text style={styles.error}>{errorMessage}</Text>}
 
-       <MapView
-          provider={PROVIDER_GOOGLE}
-          style={styles.map}
-          onLongPress={placePin}
-          initialRegion={{
-            latitude: 42.6629,
-            longitude: 21.1655,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          }}
-        >
-          {pinLocation && (
-            <Marker coordinate={pinLocation} pinColor="blue" />
-          )}
-
-          {reports.map((r) => (
-            <ReportMarker key={r.id} report={r} onPress={openReport} />
-          ))}
-        </MapView>
-
+          <MapView
+            provider={PROVIDER_GOOGLE}
+            style={styles.map}
+            onLongPress={placePin}
+            initialRegion={{
+              latitude: 42.6629,
+              longitude: 21.1655,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            }}
+          >
+            {pinLocation && (
+              <Marker coordinate={pinLocation} pinColor="blue" />
+            )}
+            {reports.map((r) => (
+              <ReportMarker key={r.id} report={r} onPress={setOpenedReport} />
+            ))}
+          </MapView>
 
           {!photoUri && (
             <TouchableOpacity
               style={styles.cameraMainBtn}
               onPress={openPhotoPicker}
-              activeOpacity={0.7}
             >
               <Text style={styles.photoMainText}>📸 Shto foto</Text>
             </TouchableOpacity>
@@ -317,14 +298,12 @@ export default function ReportScreen() {
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.changeBtn]}
                   onPress={openPhotoPicker}
-                  activeOpacity={0.7}
                 >
                   <Text style={styles.actionText}>🔄 Ndrysho</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.deleteBtn]}
                   onPress={removePhoto}
-                  activeOpacity={0.7}
                 >
                   <Text style={styles.actionText}>❌ Largo</Text>
                 </TouchableOpacity>
@@ -334,7 +313,16 @@ export default function ReportScreen() {
 
           <TextInput
             style={styles.input}
+            placeholder="Emri i problemit..."
+            placeholderTextColor="#6c757d"
+            value={problemTitle}
+            onChangeText={setProblemTitle}
+          />
+
+          <TextInput
+            style={styles.input}
             placeholder="Përshkrimi..."
+            placeholderTextColor="#6c757d"
             value={description}
             onChangeText={setDescription}
             multiline
@@ -348,67 +336,40 @@ export default function ReportScreen() {
             style={[styles.sendButton, { opacity: canSend ? 1 : 0.5 }]}
             onPress={sendReport}
             disabled={!canSend || loading}
-            activeOpacity={0.7}
           >
             <Text style={styles.sendText}>
               {loading ? "Duke dërguar..." : "Dërgo Raportin"}
             </Text>
           </TouchableOpacity>
-
-          <Modal visible={openedReport !== null} animationType="fade">
-            {openedReport && (
-              <FlatList
-                data={[openedReport]}
-                keyExtractor={(i) => i.id}
-                renderItem={({ item }) => (
-                  <View style={{ padding: 20 }}>
-                    <Image
-                      source={{ uri: `data:image/jpeg;base64,${item.photoBase64}` }}
-                      style={styles.modalImage}
-                    />
-                    <Text style={{ marginTop: 15 }}>{item.description}</Text>
-                    <Text style={{ marginTop: 10, color: "gray" }}>
-                      {item.placeName}
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.closeBtn}
-                      onPress={() => setOpenedReport(null)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.closeText}>Mbyll</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              />
-            )}
-          </Modal>
         </View>
       </ScrollView>
 
       {showSuccess && (
-        <View style={styles.successOverlay}>
-          <Animated.View
-            style={[
-              styles.successPopup,
-              {
-                opacity: successAnim,
-                transform: [
-                  {
-                    scale: successAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.85, 1],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <Text style={styles.successIcon}>✅</Text>
-            <Text style={styles.successText}>
-              Raporti u dërgua me sukses!
-            </Text>
-          </Animated.View>
-        </View>
+        <Modal transparent animationType="none">
+          <View style={styles.successOverlay}>
+            <Animated.View
+              style={[
+                styles.successPopup,
+                {
+                  transform: [
+                    {
+                      scale: successAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.7, 1],
+                      }),
+                    },
+                  ],
+                  opacity: successAnim,
+                },
+              ]}
+            >
+              <Text style={styles.successIcon}>✅</Text>
+              <Text style={styles.successText}>
+                Raporti u dërgua me sukses
+              </Text>
+            </Animated.View>
+          </View>
+        </Modal>
       )}
     </KeyboardAvoidingView>
   );
@@ -423,7 +384,6 @@ const styles = StyleSheet.create({
     color: "#023e8a",
   },
   map: { height: 300, width: "100%", marginTop: 10 },
-
   cameraMainBtn: {
     backgroundColor: "#0077b6",
     marginHorizontal: 50,
@@ -433,44 +393,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   photoMainText: { color: "white", fontSize: 17, fontWeight: "600" },
-
   photoContainer: { alignItems: "center", marginTop: 15 },
-
-  previewImage: {
-    width: "90%",
-    height: 200,
-    borderRadius: 15,
-  },
-
-  photoActions: {
-    flexDirection: "row",
-    width: "90%",
-    marginTop: 12,
-  },
-
+  previewImage: { width: "90%", height: 200, borderRadius: 15 },
+  photoActions: { flexDirection: "row", width: "90%", marginTop: 12 },
   actionBtn: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 14,
     alignItems: "center",
   },
-
-  changeBtn: {
-    backgroundColor: "#0077b6",
-    marginRight: 8,
-  },
-
-  deleteBtn: {
-    backgroundColor: "#d62828",
-    marginLeft: 8,
-  },
-
-  actionText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-
+  changeBtn: { backgroundColor: "#0077b6", marginRight: 8 },
+  deleteBtn: { backgroundColor: "#d62828", marginLeft: 8 },
+  actionText: { color: "white", fontSize: 16, fontWeight: "600" },
   input: {
     borderWidth: 1,
     borderColor: "#aaa",
@@ -480,14 +414,12 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: "white",
   },
-
   address: {
     textAlign: "center",
     marginTop: 10,
     color: "#0077b6",
     fontWeight: "bold",
   },
-
   sendButton: {
     backgroundColor: "#00b4d8",
     marginHorizontal: 50,
@@ -495,47 +427,28 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginTop: 10,
   },
-
   sendText: { textAlign: "center", color: "white", fontSize: 18 },
-
   error: { textAlign: "center", color: "red", marginTop: 10 },
-
-  modalImage: { width: "100%", height: 300, borderRadius: 15 },
-
-  closeBtn: {
-    marginTop: 25,
-    backgroundColor: "#023e8a",
-    padding: 15,
-    borderRadius: 10,
-  },
-
-  closeText: { color: "white", textAlign: "center", fontSize: 16 },
-
   successOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.35)",
   },
-
   successPopup: {
     backgroundColor: "white",
-    paddingVertical: 25,
-    paddingHorizontal: 35,
+    padding: 25,
     borderRadius: 20,
     alignItems: "center",
-    elevation: 6,
+    width: "80%",
   },
-
-  successIcon: { fontSize: 40, marginBottom: 10 },
-
+  successIcon: {
+    fontSize: 40,
+    marginBottom: 10,
+  },
   successText: {
-    fontSize: 17,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: "bold",
     color: "#023e8a",
     textAlign: "center",
   },

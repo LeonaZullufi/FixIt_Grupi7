@@ -115,7 +115,6 @@ export default function ReportScreen() {
           })}
       </MapView>
 
-      {/* MODAL PËR DETAJET ME FADE EFFECT */}
       <Modal 
         visible={!!selectedMarker} 
         transparent={true} 
@@ -124,7 +123,7 @@ export default function ReportScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{selectedMarker?.description}</Text>
+            <Text style={styles.modalTitle}>{selectedMarker?.problemTitle}</Text>
             
             <View style={[styles.statusBadge, { backgroundColor: selectedMarker?.status === 'in_progress' ? 'orange' : '#2196F3' }]}>
               <Text style={styles.statusText}>
@@ -173,13 +172,13 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.7)", // Pak më e errët për fokus më të mirë
+    backgroundColor: "rgba(0,0,0,0.7)", 
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
     backgroundColor: "white",
-    width: "90%", // Më i gjerë
+    width: "90%", 
     borderRadius: 25,
     padding: 20,
     alignItems: "center",
@@ -195,6 +194,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 10,
     color: "#333",
+    textTransform: "capitalize", 
   },
   statusBadge: {
     paddingVertical: 5,
@@ -207,10 +207,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 13,
   },
-  // STILI I RI PËR FOTON E MADHE
   largeImage: {
-    width: width * 0.8, // 80% e gjerësisë së ekranit
-    height: 250,        // Lartësi më e madhe
+    width: width * 0.8, 
+    height: 250,        
     borderRadius: 15,
     borderWidth: 1,
     borderColor: "#eee",
