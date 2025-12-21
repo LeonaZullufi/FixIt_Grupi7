@@ -1,0 +1,26 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`<Index /> shfaqet saktë gjatë loading 1`] = `
+<View
+  style={
+    {
+      "alignItems": "center",
+      "flex": 1,
+      "justifyContent": "center",
+    }
+  }
+>
+  <ActivityIndicator
+    size="large"
+  />
+  <Text
+    style={
+      {
+        "marginTop": 10,
+      }
+    }
+  >
+    Duke kontrolluar përdoruesin...
+  </Text>
+</View>
+`;
