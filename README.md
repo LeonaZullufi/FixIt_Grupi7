@@ -69,7 +69,7 @@
             * **Button Press:** Efekte `fade` të modalit tek dritarja "Raportimet" duke përdorur `TouchableOpacity`.
             * **Modals:** Janë përdorur për të shfaqur informacionet rreth raportimeve
             * **Task Feedback:** Animacione vizuale pas përfundimit të veprimeve (psh. dërgimi i një forme apo raportimi).
-            * **Screenshots**
+         * Screenshots
 <p align="center">
   <img src="FixIt/assets/UI/ballina.jpeg" width="30%">
   <img src="FixIt/assets/UI/njoftimet.jpeg" width="30%">
