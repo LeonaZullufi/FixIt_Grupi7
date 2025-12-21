@@ -5,17 +5,22 @@ import { StatusBar } from "expo-status-bar";
 import { Tabs, useRouter } from "expo-router";
 import { ThemeProvider } from "../../context/themeContext";
 import { auth, onAuthStateChanged } from "../../firebase";
+import { checkAndSendPendingNotifications } from "../../utils/notificationService";
 
 export default function RootLayout() {
   const router = useRouter();
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         router.replace("/(auth)/login");
       } else {
         setCheckingAuth(false);
+        // Check and send pending notifications when user logs in
+        if (user.email) {
+          checkAndSendPendingNotifications(user.email);
+        }
       }
     });
 
@@ -141,6 +146,13 @@ export default function RootLayout() {
             />
             <Tabs.Screen
               name="editProfile"
+              options={{
+                href: null,
+                title: "Profil",
+              }}
+            />
+            <Tabs.Screen
+              name="notificationSettings"
               options={{
                 href: null,
                 title: "Profil",
