@@ -20,7 +20,7 @@ import {
 import { db, auth } from "../../firebase";
 import { signOut } from "firebase/auth";
 import { router, useNavigation } from "expo-router";
-import { sendReportStatusNotification } from "../../utils/notificationService";
+import { saveReportStatusNotification } from "../../utils/notificationService";
 
 export default function AdminDashboard() {
   const [reports, setReports] = useState([]);
@@ -64,7 +64,7 @@ export default function AdminDashboard() {
       await updateDoc(reportRef, { status });
 
       if (reportData.userEmail) {
-        await sendReportStatusNotification(
+        await saveReportStatusNotification(
           reportData.userEmail,
           reportId,
           reportData.placeName || "Vend i panjohur",
