@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useLayoutEffect } from "react";
+import { serverTimestamp } from "firebase/firestore";
 import {
   View,
   Text,
@@ -52,30 +53,41 @@ export default function AdminDashboard() {
   }, []);
 
   const updateStatus = async (reportId, status) => {
-    try {
-      const reportRef = doc(db, "reports", reportId);
-      const reportData = reports.find((r) => r.id === reportId);
+  try {
+    const reportRef = doc(db, "reports", reportId);
+    const reportData = reports.find((r) => r.id === reportId);
 
-      if (!reportData) {
-        console.error("Report not found");
-        return;
-      }
-
-      await updateDoc(reportRef, { status });
-
-      if (reportData.userEmail) {
-        await sendReportStatusNotification(
-          reportData.userEmail,
-          reportId,
-          reportData.placeName || "Vend i panjohur",
-          status,
-          reportData.description || ""
-        );
-      }
-    } catch (error) {
-      console.error("Error updating report status:", error);
+    if (!reportData) {
+      console.error("Report not found");
+      return;
     }
-  };
+
+    // 🔴 Nëse përfundohet problemi, ruaj datën
+    if (status === "completed") {
+      await updateDoc(reportRef, {
+        status,
+        completedAt: serverTimestamp(), // ✅ DATA E PËRFUNDIMIT
+      });
+    } else {
+      // Për statuset tjera, vetëm statusi
+      await updateDoc(reportRef, { status });
+    }
+
+    // 🔔 Notification
+    if (reportData.userEmail) {
+      await saveReportStatusNotification(
+        reportData.userEmail,
+        reportId,
+        reportData.placeName || "Vend i panjohur",
+        status,
+        reportData.description || ""
+      );
+    }
+  } catch (error) {
+    console.error("Error updating report status:", error);
+  }
+};
+
 
   const deleteReport = async (id) => {
     await deleteDoc(doc(db, "reports", id));
@@ -142,6 +154,11 @@ export default function AdminDashboard() {
             <Text style={styles.info}>
               Status aktual: {statusLabel(opened.status)}
             </Text>
+            {opened.completedAt && (
+              <Text style={styles.info}>
+                ✅ Përfunduar më: {opened.completedAt.toDate().toLocaleString()}
+              </Text>
+            )}
 
             {/* STATUS BUTTONS */}
             <View style={styles.statusBox}>
