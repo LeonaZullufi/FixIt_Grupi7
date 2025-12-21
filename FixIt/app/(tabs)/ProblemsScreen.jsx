@@ -102,26 +102,34 @@ export default function ReportScreen() {
         onRegionChangeComplete={onRegionChangeComplete}
         customMapStyle={mapStyle}
       >
-        {reports.map((report) => {
-          const isMyReport = report.userEmail === currentUserEmail;
-          const isFinished = report.finished === true;
+        {reports
+          // FILTRI: Shfaq vetëm raportet që janë "pending" ose "in_progress"
+          .filter(
+            (report) =>
+              report.status === "pending" || report.status === "in_progress"
+          )
+          .map((report) => {
+            const isMyReport = report.userEmail === currentUserEmail;
 
-          let pinColor = "blue";
-          if (isMyReport) pinColor = isFinished ? "green" : "red";
+            // Përcaktimi i ngjyrës:
+            // Të gjitha raportet "in_progress"/"pending" bëhen portokalli (më e afërta me kafen)
+            // Nëse dëshiron t'i dallosh raportet e tua, mund t'i lësh Red
+            let pinColor = "orange";
+            if (isMyReport) pinColor = "red";
 
-          return (
-            <Marker
-              key={report.id}
-              coordinate={{
-                latitude: report.latitude,
-                longitude: report.longitude,
-              }}
-              pinColor={pinColor}
-              onPress={() => setSelectedMarker(report)}
-              calloutEnabled={false}
-            />
-          );
-        })}
+            return (
+              <Marker
+                key={report.id}
+                coordinate={{
+                  latitude: report.latitude,
+                  longitude: report.longitude,
+                }}
+                pinColor={pinColor}
+                onPress={() => setSelectedMarker(report)}
+                calloutEnabled={false}
+              />
+            );
+          })}
       </MapView>
 
       <Modal
@@ -136,6 +144,11 @@ export default function ReportScreen() {
               {selectedMarker?.description?.length > 30
                 ? `${selectedMarker.description.substring(0, 30)}...`
                 : selectedMarker?.description}
+            </Text>
+
+            {/* Statusi në Modal */}
+            <Text style={styles.statusBadge}>
+              Statusi: {selectedMarker?.status}
             </Text>
 
             {photoSource ? (
@@ -170,20 +183,17 @@ export default function ReportScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1, width: "100%" },
-
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
-
   modalContent: {
     backgroundColor: "white",
     padding: 20,
@@ -192,32 +202,33 @@ const styles = StyleSheet.create({
     maxHeight: 520,
     alignItems: "center",
   },
-
   modalTitle: {
     fontWeight: "bold",
     fontSize: 18,
     textAlign: "center",
     marginBottom: 8,
   },
-
+  statusBadge: {
+    color: "#795548",
+    fontWeight: "bold",
+    marginBottom: 10,
+    fontStyle: "italic",
+  },
   image: {
     width: 300,
     height: 200,
     marginTop: 10,
     borderRadius: 8,
   },
-
   noImage: {
     backgroundColor: "#eee",
     justifyContent: "center",
     alignItems: "center",
   },
-
   description: {
     marginTop: 10,
     textAlign: "center",
   },
-
   closeButton: {
     backgroundColor: "#2196F3",
     marginTop: 20,
