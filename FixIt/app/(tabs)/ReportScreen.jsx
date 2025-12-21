@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -20,6 +21,8 @@ import {
   ActivityIndicator,
   FlatList,
   Alert,
+  Animated,
+  Easing,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useNavigation } from "expo-router";
@@ -68,7 +71,9 @@ export default function ReportScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingReports, setLoadingReports] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null);
+
+  const successAnim = useRef(new Animated.Value(0)).current;
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -187,6 +192,26 @@ export default function ReportScreen() {
     );
   }, [pinLocation, photoBase64, description]);
 
+  const showSuccessPopup = () => {
+    setShowSuccess(true);
+    successAnim.setValue(0);
+
+    Animated.timing(successAnim, {
+      toValue: 1,
+      duration: 400,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+
+    setTimeout(() => {
+      Animated.timing(successAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => setShowSuccess(false));
+    }, 1800);
+  };
+
   const sendReport = useCallback(async () => {
     if (!canSend) return;
 
@@ -212,7 +237,8 @@ export default function ReportScreen() {
       setDescription("");
       setPinLocation(null);
       setPlaceName("");
-      setSuccessMessage("Raporti u dërgua me sukses!");
+
+      showSuccessPopup();
     } catch {
       setErrorMessage("Gabim gjatë dërgimit.");
     } finally {
@@ -242,7 +268,6 @@ export default function ReportScreen() {
 
           {loadingReports && <ActivityIndicator color="#0077b6" />}
           {errorMessage && <Text style={styles.error}>{errorMessage}</Text>}
-          {successMessage && <Text style={styles.success}>{successMessage}</Text>}
 
           <MapView
             style={styles.map}
@@ -264,6 +289,7 @@ export default function ReportScreen() {
             <TouchableOpacity
               style={styles.cameraMainBtn}
               onPress={openPhotoPicker}
+              activeOpacity={0.7}
             >
               <Text style={styles.photoMainText}>📸 Shto foto</Text>
             </TouchableOpacity>
@@ -272,18 +298,18 @@ export default function ReportScreen() {
           {photoUri && (
             <View style={styles.photoContainer}>
               <Image source={{ uri: photoUri }} style={styles.previewImage} />
-
               <View style={styles.photoActions}>
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.changeBtn]}
                   onPress={openPhotoPicker}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.actionText}>🔄 Ndrysho</Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.deleteBtn]}
                   onPress={removePhoto}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.actionText}>❌ Largo</Text>
                 </TouchableOpacity>
@@ -307,13 +333,14 @@ export default function ReportScreen() {
             style={[styles.sendButton, { opacity: canSend ? 1 : 0.5 }]}
             onPress={sendReport}
             disabled={!canSend || loading}
+            activeOpacity={0.7}
           >
             <Text style={styles.sendText}>
               {loading ? "Duke dërguar..." : "Dërgo Raportin"}
             </Text>
           </TouchableOpacity>
 
-          <Modal visible={openedReport !== null} animationType="slide">
+          <Modal visible={openedReport !== null} animationType="fade">
             {openedReport && (
               <FlatList
                 data={[openedReport]}
@@ -331,6 +358,7 @@ export default function ReportScreen() {
                     <TouchableOpacity
                       style={styles.closeBtn}
                       onPress={() => setOpenedReport(null)}
+                      activeOpacity={0.7}
                     >
                       <Text style={styles.closeText}>Mbyll</Text>
                     </TouchableOpacity>
@@ -341,6 +369,32 @@ export default function ReportScreen() {
           </Modal>
         </View>
       </ScrollView>
+
+      {showSuccess && (
+        <View style={styles.successOverlay}>
+          <Animated.View
+            style={[
+              styles.successPopup,
+              {
+                opacity: successAnim,
+                transform: [
+                  {
+                    scale: successAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.85, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Text style={styles.successIcon}>✅</Text>
+            <Text style={styles.successText}>
+              Raporti u dërgua me sukses!
+            </Text>
+          </Animated.View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -392,7 +446,7 @@ const styles = StyleSheet.create({
   },
 
   deleteBtn: {
-    backgroundColor: "#7a3737ff",
+    backgroundColor: "#d62828",
     marginLeft: 8,
   },
 
@@ -430,7 +484,6 @@ const styles = StyleSheet.create({
   sendText: { textAlign: "center", color: "white", fontSize: 18 },
 
   error: { textAlign: "center", color: "red", marginTop: 10 },
-  success: { textAlign: "center", color: "green", marginTop: 10 },
 
   modalImage: { width: "100%", height: 300, borderRadius: 15 },
 
@@ -442,4 +495,33 @@ const styles = StyleSheet.create({
   },
 
   closeText: { color: "white", textAlign: "center", fontSize: 16 },
+
+  successOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+
+  successPopup: {
+    backgroundColor: "white",
+    paddingVertical: 25,
+    paddingHorizontal: 35,
+    borderRadius: 20,
+    alignItems: "center",
+    elevation: 6,
+  },
+
+  successIcon: { fontSize: 40, marginBottom: 10 },
+
+  successText: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#023e8a",
+    textAlign: "center",
+  },
 });
