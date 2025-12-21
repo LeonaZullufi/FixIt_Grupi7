@@ -69,6 +69,17 @@
             * **Button Press:** Efekte `fade` të modalit tek dritarja "Raportimet" duke përdorur `TouchableOpacity`.
             * **Modals:** Janë përdorur për të shfaqur informacionet rreth raportimeve
             * **Task Feedback:** Animacione vizuale pas përfundimit të veprimeve (psh. dërgimi i një forme apo raportimi).
+         * Screenshots
+<p align="center">
+  <img src="FixIt/assets/UI/ballina.jpeg" width="30%">
+  <img src="FixIt/assets/UI/njoftimet.jpeg" width="30%">
+  <img src="FixIt/assets/UI/profili.jpeg" width="30%">
+</p>
+<p align="center">
+  <img src="FixIt/assets/UI/raportimet.jpeg" width="30%">
+  <img src="FixIt/assets/UI/raporto.jpeg" width="30%">
+</p>
+
 3. Optimizimi dhe Performanca
     * Për të siguruar që aplikacioni të jetë i shpejtë dhe efikas, janë përdorur teknikat e mëposhtme:
         1. Renderimi i Listave
