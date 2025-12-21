@@ -1,4 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   StyleSheet,
@@ -13,6 +18,7 @@ import { collection, onSnapshot, query } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { db } from "../../firebase.js";
 
+
 const mapStyle = [
   { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
 ];
@@ -22,7 +28,38 @@ const LATITUDE_MAX = 44.3;
 const LONGITUDE_MIN = 19.8;
 const LONGITUDE_MAX = 22.8;
 
-export default function ReportScreen() {
+const imageMap = {
+  "Gropa1.png": require("../../assets/ProblemOnMap/Gropa1.png"),
+  "Gropa2Prizren.jpg": require("../../assets/ProblemOnMap/Gropa2Prizren.jpg"),
+  "KanalizimNeRruge.jpg": require("../../assets/ProblemOnMap/KanalizimNeRruge.jpg"),
+  "KendiLojrave.jpg": require("../../assets/ProblemOnMap/KendiLojrave.jpg"),
+  "MbeturinaSkenderaj.jpg": require("../../assets/ProblemOnMap/MbeturinaSkenderaj.jpg"),
+  "NdriqimPrishtine.jpg": require("../../assets/ProblemOnMap/NdriqimPrishtine.jpg"),
+};
+
+
+const ProblemMarker = React.memo(({ report, isMyReport, onPress }) => {
+  const pinColor = isMyReport
+    ? report.finished
+      ? "green"
+      : "red"
+    : "blue";
+
+  return (
+    <Marker
+      coordinate={{
+        latitude: report.latitude,
+        longitude: report.longitude,
+      }}
+      pinColor={pinColor}
+      onPress={() => onPress(report)}
+      calloutEnabled={false}
+    />
+  );
+});
+
+
+export default function ProblemsScreen() {
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,16 +74,26 @@ export default function ReportScreen() {
   const auth = getAuth();
   const currentUserEmail = auth.currentUser?.email || "";
 
-  const onRegionChangeComplete = (newRegion) => {
-    let { latitude, longitude } = newRegion;
+
+  const onRegionChangeComplete = useCallback((newRegion) => {
+    let latitude = newRegion.latitude;
+    let longitude = newRegion.longitude;
 
     if (latitude < LATITUDE_MIN) latitude = LATITUDE_MIN;
     if (latitude > LATITUDE_MAX) latitude = LATITUDE_MAX;
     if (longitude < LONGITUDE_MIN) longitude = LONGITUDE_MIN;
     if (longitude > LONGITUDE_MAX) longitude = LONGITUDE_MAX;
 
-    setRegion({ ...newRegion, latitude, longitude });
-  };
+    if (
+      latitude !== newRegion.latitude ||
+      longitude !== newRegion.longitude
+    ) {
+      setRegion({ ...newRegion, latitude, longitude });
+    } else {
+      setRegion(newRegion);
+    }
+  }, []);
+
 
   useEffect(() => {
     const q = query(collection(db, "reports"));
@@ -70,6 +117,28 @@ export default function ReportScreen() {
     return () => unsubscribe();
   }, []);
 
+
+  const reportsWithOwnership = useMemo(() => {
+    return reports.map((r) => ({
+      ...r,
+      isMyReport: r.userEmail === currentUserEmail,
+    }));
+  }, [reports, currentUserEmail]);
+
+  const openMarker = useCallback((report) => {
+    setSelectedMarker(report);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setSelectedMarker(null);
+  }, []);
+
+  const photoSource = useMemo(() => {
+    if (!selectedMarker?.photoName) return null;
+    return imageMap[selectedMarker.photoName];
+  }, [selectedMarker]);
+
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -79,19 +148,6 @@ export default function ReportScreen() {
     );
   }
 
-  const photoSource =
-    selectedMarker?.photoBase64 &&
-    typeof selectedMarker.photoBase64 === "string" &&
-    selectedMarker.photoBase64.length > 100
-      ? {
-          uri: selectedMarker.photoBase64.startsWith("data:image")
-            ? selectedMarker.photoBase64.replace(/\s/g, "")
-            : `data:image/jpeg;base64,${selectedMarker.photoBase64.replace(
-                /\s/g,
-                ""
-              )}`,
-        }
-      : null;
 
   return (
     <View style={styles.container}>
@@ -102,33 +158,22 @@ export default function ReportScreen() {
         onRegionChangeComplete={onRegionChangeComplete}
         customMapStyle={mapStyle}
       >
-        {reports.map((report) => {
-          const isMyReport = report.userEmail === currentUserEmail;
-          const isFinished = report.finished === true;
-
-          let pinColor = "blue";
-          if (isMyReport) pinColor = isFinished ? "green" : "red";
-
-          return (
-            <Marker
-              key={report.id}
-              coordinate={{
-                latitude: report.latitude,
-                longitude: report.longitude,
-              }}
-              pinColor={pinColor}
-              onPress={() => setSelectedMarker(report)}
-              calloutEnabled={false}
-            />
-          );
-        })}
+        {reportsWithOwnership.map((report) => (
+          <ProblemMarker
+            key={report.id}
+            report={report}
+            isMyReport={report.isMyReport}
+            onPress={openMarker}
+          />
+        ))}
       </MapView>
+
 
       <Modal
         visible={!!selectedMarker}
         transparent
         animationType="fade"
-        onRequestClose={() => setSelectedMarker(null)}
+        onRequestClose={closeModal}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -139,24 +184,20 @@ export default function ReportScreen() {
             </Text>
 
             {photoSource ? (
-              <Image
-                source={photoSource}
-                style={styles.image}
-                resizeMode="contain"
-              />
+              <Image source={photoSource} style={styles.image} />
             ) : (
-              <View style={[styles.image, styles.noImage]}>
-                <Text style={{ color: "#888" }}>No photo</Text>
+              <View style={[styles.image, { backgroundColor: "#eee" }]}>
+                <Text style={{ color: "#999" }}>No photo</Text>
               </View>
             )}
 
-            <Text style={styles.description}>
+            <Text style={{ marginTop: 10, textAlign: "center" }}>
               {selectedMarker?.description}
             </Text>
 
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={() => setSelectedMarker(null)}
+              onPress={closeModal}
             >
               <Text style={{ color: "white" }}>Mbyll</Text>
             </TouchableOpacity>
@@ -167,57 +208,41 @@ export default function ReportScreen() {
   );
 }
 
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1, width: "100%" },
-
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
-
   modalContent: {
     backgroundColor: "white",
     padding: 20,
     borderRadius: 12,
     width: 340,
-    maxHeight: 520,
+    maxHeight: 500,
     alignItems: "center",
   },
-
   modalTitle: {
     fontWeight: "bold",
     fontSize: 18,
     textAlign: "center",
     marginBottom: 8,
   },
-
   image: {
     width: 300,
     height: 200,
     marginTop: 10,
     borderRadius: 8,
   },
-
-  noImage: {
-    backgroundColor: "#eee",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  description: {
-    marginTop: 10,
-    textAlign: "center",
-  },
-
   closeButton: {
     backgroundColor: "#2196F3",
     marginTop: 20,
