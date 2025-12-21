@@ -20,7 +20,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  FlatList,
   Alert,
   Animated,
   Easing,
@@ -77,14 +76,11 @@ export default function ReportScreen() {
 
   const [photoUri, setPhotoUri] = useState(null);
   const [photoBase64, setPhotoBase64] = useState(null);
-
-  const [problemTitle, setProblemTitle] = useState(""); // 🔴 SHTUAR
+  const [problemTitle, setProblemTitle] = useState("");
   const [description, setDescription] = useState("");
-
   const [pinLocation, setPinLocation] = useState(null);
   const [placeName, setPlaceName] = useState("");
   const [reports, setReports] = useState([]);
-  const [openedReport, setOpenedReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingReports, setLoadingReports] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -193,14 +189,16 @@ export default function ReportScreen() {
     setPlaceName(await getAddressFromCoords(latitude, longitude));
   }, []);
 
-  const canSend = useMemo(() => {
-    return !!(
-      pinLocation &&
-      photoBase64 &&
-      problemTitle.trim().length > 0 && // 🔴 SHTUAR
-      description.trim().length > 0
-    );
-  }, [pinLocation, photoBase64, problemTitle, description]);
+  const canSend = useMemo(
+    () =>
+      !!(
+        pinLocation &&
+        photoBase64 &&
+        problemTitle.trim().length > 0 &&
+        description.trim().length > 0
+      ),
+    [pinLocation, photoBase64, problemTitle, description]
+  );
 
   const showSuccessPopup = () => {
     setShowSuccess(true);
@@ -224,15 +222,13 @@ export default function ReportScreen() {
 
   const sendReport = useCallback(async () => {
     if (!canSend) return;
-
     const user = auth.currentUser;
     if (!user) return;
 
     setLoading(true);
-
     try {
       await addDoc(collection(db, "reports"), {
-        problemTitle, // 🔴 SHTUAR
+        problemTitle,
         description,
         latitude: pinLocation.latitude,
         longitude: pinLocation.longitude,
@@ -245,7 +241,7 @@ export default function ReportScreen() {
 
       setPhotoUri(null);
       setPhotoBase64(null);
-      setProblemTitle(""); // 🔴 SHTUAR
+      setProblemTitle("");
       setDescription("");
       setPinLocation(null);
       setPlaceName("");
@@ -257,8 +253,6 @@ export default function ReportScreen() {
       setLoading(false);
     }
   }, [canSend, pinLocation, photoBase64, description, placeName, problemTitle]);
-
-  const openReport = useCallback((r) => setOpenedReport(r), []);
 
   return (
     <KeyboardAvoidingView
@@ -290,9 +284,8 @@ export default function ReportScreen() {
             {pinLocation && (
               <Marker coordinate={pinLocation} pinColor="blue" />
             )}
-
             {reports.map((r) => (
-              <ReportMarker key={r.id} report={r} onPress={openReport} />
+              <ReportMarker key={r.id} report={r} onPress={() => {}} />
             ))}
           </MapView>
 
@@ -325,18 +318,18 @@ export default function ReportScreen() {
             </View>
           )}
 
-          {/* 🔴 EMRI I PROBLEMIT */}
           <TextInput
             style={styles.input}
             placeholder="Emri i problemit"
+            placeholderTextColor="#6c757d"
             value={problemTitle}
             onChangeText={setProblemTitle}
           />
 
-          {/* PËRSHKRIMI (PA PREK) */}
           <TextInput
             style={styles.input}
             placeholder="Përshkrimi..."
+            placeholderTextColor="#6c757d"
             value={description}
             onChangeText={setDescription}
             multiline
@@ -357,6 +350,34 @@ export default function ReportScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {showSuccess && (
+        <Modal transparent animationType="none">
+          <View style={styles.successOverlay}>
+            <Animated.View
+              style={[
+                styles.successPopup,
+                {
+                  opacity: successAnim,
+                  transform: [
+                    {
+                      scale: successAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.7, 1],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Text style={styles.successIcon}>✅</Text>
+              <Text style={styles.successText}>
+                Raporti u dërgua me sukses
+              </Text>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -446,4 +467,31 @@ const styles = StyleSheet.create({
   sendText: { textAlign: "center", color: "white", fontSize: 18 },
 
   error: { textAlign: "center", color: "red", marginTop: 10 },
+
+  successOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  successPopup: {
+    backgroundColor: "white",
+    padding: 25,
+    borderRadius: 20,
+    alignItems: "center",
+    width: "80%",
+  },
+
+  successIcon: {
+    fontSize: 40,
+    marginBottom: 10,
+  },
+
+  successText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#023e8a",
+    textAlign: "center",
+  },
 });
