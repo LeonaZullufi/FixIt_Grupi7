@@ -7,6 +7,7 @@ import React, {
   useRef,
 } from "react";
 import * as ImagePicker from "expo-image-picker";
+import { serverTimestamp } from "firebase/firestore";
 import {
   View,
   Text,
@@ -19,6 +20,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  FlatList,
   Alert,
   Animated,
   Easing,
@@ -73,10 +75,12 @@ export default function ReportScreen() {
   const navigation = useNavigation();
   const { colors } = useTheme();
 
-  const [problemTitle, setProblemTitle] = useState("");
   const [photoUri, setPhotoUri] = useState(null);
   const [photoBase64, setPhotoBase64] = useState(null);
+
+  const [problemTitle, setProblemTitle] = useState(""); // 🔴 SHTUAR
   const [description, setDescription] = useState("");
+
   const [pinLocation, setPinLocation] = useState(null);
   const [placeName, setPlaceName] = useState("");
   const [reports, setReports] = useState([]);
@@ -124,9 +128,13 @@ export default function ReportScreen() {
     return unsub;
   }, []);
 
-  const processImage = (asset) => {
-    setPhotoUri(asset.uri);
-    setPhotoBase64(asset.base64);
+  const processImage = async (uri) => {
+    setPhotoUri(uri);
+    const res = await fetch(uri);
+    const blob = await res.blob();
+    const reader = new FileReader();
+    reader.onload = () => setPhotoBase64(reader.result.split(",")[1]);
+    reader.readAsDataURL(blob);
   };
 
   const takePhoto = useCallback(async () => {
@@ -136,10 +144,11 @@ export default function ReportScreen() {
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       quality: 0.7,
-      base64: true,
     });
 
-    if (!result.canceled) processImage(result.assets[0]);
+    if (!result.canceled) {
+      await processImage(result.assets[0].uri);
+    }
   }, []);
 
   const pickFromGallery = useCallback(async () => {
@@ -149,10 +158,11 @@ export default function ReportScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,
       quality: 0.7,
-      base64: true,
     });
 
-    if (!result.canceled) processImage(result.assets[0]);
+    if (!result.canceled) {
+      await processImage(result.assets[0].uri);
+    }
   }, []);
 
   const openPhotoPicker = useCallback(() => {
@@ -183,16 +193,14 @@ export default function ReportScreen() {
     setPlaceName(await getAddressFromCoords(latitude, longitude));
   }, []);
 
-  const canSend = useMemo(
-    () =>
-      !!(
-        pinLocation &&
-        photoBase64 &&
-        description.trim().length > 0 &&
-        problemTitle.trim().length > 0
-      ),
-    [pinLocation, photoBase64, description, problemTitle]
-  );
+  const canSend = useMemo(() => {
+    return !!(
+      pinLocation &&
+      photoBase64 &&
+      problemTitle.trim().length > 0 && // 🔴 SHTUAR
+      description.trim().length > 0
+    );
+  }, [pinLocation, photoBase64, problemTitle, description]);
 
   const showSuccessPopup = () => {
     setShowSuccess(true);
@@ -216,36 +224,41 @@ export default function ReportScreen() {
 
   const sendReport = useCallback(async () => {
     if (!canSend) return;
+
     const user = auth.currentUser;
     if (!user) return;
 
     setLoading(true);
+
     try {
       await addDoc(collection(db, "reports"), {
-        problemTitle,
+        problemTitle, // 🔴 SHTUAR
+        description,
         latitude: pinLocation.latitude,
         longitude: pinLocation.longitude,
         placeName,
         photoBase64,
-        description,
         userEmail: user.email,
-        createdAt: Date.now(),
+        createdAt: serverTimestamp(),
         status: "pending",
       });
 
-      setProblemTitle("");
       setPhotoUri(null);
       setPhotoBase64(null);
+      setProblemTitle(""); // 🔴 SHTUAR
       setDescription("");
       setPinLocation(null);
       setPlaceName("");
+
       showSuccessPopup();
     } catch {
       setErrorMessage("Gabim gjatë dërgimit.");
     } finally {
       setLoading(false);
     }
-  }, [canSend, problemTitle, pinLocation, photoBase64, description, placeName]);
+  }, [canSend, pinLocation, photoBase64, description, placeName, problemTitle]);
+
+  const openReport = useCallback((r) => setOpenedReport(r), []);
 
   return (
     <KeyboardAvoidingView
@@ -277,8 +290,9 @@ export default function ReportScreen() {
             {pinLocation && (
               <Marker coordinate={pinLocation} pinColor="blue" />
             )}
+
             {reports.map((r) => (
-              <ReportMarker key={r.id} report={r} onPress={setOpenedReport} />
+              <ReportMarker key={r.id} report={r} onPress={openReport} />
             ))}
           </MapView>
 
@@ -311,18 +325,18 @@ export default function ReportScreen() {
             </View>
           )}
 
+          {/* 🔴 EMRI I PROBLEMIT */}
           <TextInput
             style={styles.input}
-            placeholder="Emri i problemit..."
-            placeholderTextColor="#6c757d"
+            placeholder="Emri i problemit"
             value={problemTitle}
             onChangeText={setProblemTitle}
           />
 
+          {/* PËRSHKRIMI (PA PREK) */}
           <TextInput
             style={styles.input}
             placeholder="Përshkrimi..."
-            placeholderTextColor="#6c757d"
             value={description}
             onChangeText={setDescription}
             multiline
@@ -343,34 +357,6 @@ export default function ReportScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {showSuccess && (
-        <Modal transparent animationType="none">
-          <View style={styles.successOverlay}>
-            <Animated.View
-              style={[
-                styles.successPopup,
-                {
-                  transform: [
-                    {
-                      scale: successAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.7, 1],
-                      }),
-                    },
-                  ],
-                  opacity: successAnim,
-                },
-              ]}
-            >
-              <Text style={styles.successIcon}>✅</Text>
-              <Text style={styles.successText}>
-                Raporti u dërgua me sukses
-              </Text>
-            </Animated.View>
-          </View>
-        </Modal>
-      )}
     </KeyboardAvoidingView>
   );
 }
@@ -384,6 +370,7 @@ const styles = StyleSheet.create({
     color: "#023e8a",
   },
   map: { height: 300, width: "100%", marginTop: 10 },
+
   cameraMainBtn: {
     backgroundColor: "#0077b6",
     marginHorizontal: 50,
@@ -393,18 +380,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   photoMainText: { color: "white", fontSize: 17, fontWeight: "600" },
+
   photoContainer: { alignItems: "center", marginTop: 15 },
-  previewImage: { width: "90%", height: 200, borderRadius: 15 },
-  photoActions: { flexDirection: "row", width: "90%", marginTop: 12 },
+
+  previewImage: {
+    width: "90%",
+    height: 200,
+    borderRadius: 15,
+  },
+
+  photoActions: {
+    flexDirection: "row",
+    width: "90%",
+    marginTop: 12,
+  },
+
   actionBtn: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 14,
     alignItems: "center",
   },
-  changeBtn: { backgroundColor: "#0077b6", marginRight: 8 },
-  deleteBtn: { backgroundColor: "#d62828", marginLeft: 8 },
-  actionText: { color: "white", fontSize: 16, fontWeight: "600" },
+
+  changeBtn: {
+    backgroundColor: "#0077b6",
+    marginRight: 8,
+  },
+
+  deleteBtn: {
+    backgroundColor: "#d62828",
+    marginLeft: 8,
+  },
+
+  actionText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
   input: {
     borderWidth: 1,
     borderColor: "#aaa",
@@ -414,12 +427,14 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: "white",
   },
+
   address: {
     textAlign: "center",
     marginTop: 10,
     color: "#0077b6",
     fontWeight: "bold",
   },
+
   sendButton: {
     backgroundColor: "#00b4d8",
     marginHorizontal: 50,
@@ -427,29 +442,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginTop: 10,
   },
+
   sendText: { textAlign: "center", color: "white", fontSize: 18 },
+
   error: { textAlign: "center", color: "red", marginTop: 10 },
-  successOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  successPopup: {
-    backgroundColor: "white",
-    padding: 25,
-    borderRadius: 20,
-    alignItems: "center",
-    width: "80%",
-  },
-  successIcon: {
-    fontSize: 40,
-    marginBottom: 10,
-  },
-  successText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#023e8a",
-    textAlign: "center",
-  },
 });
