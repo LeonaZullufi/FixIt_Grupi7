@@ -38,7 +38,7 @@ export default function ExploreScreen() {
 
   const handleScroll = (e) => {
     const y = e.nativeEvent.contentOffset.y;
-    const barStyle = theme === "dark" ? "light-content" : "dark-content";
+    const barStyle = theme === "dark" ? "light-content" : "light-content";
 
     if (y > 50 && lastHeaderState.current) {
       navigation.setOptions({ headerShown: false });

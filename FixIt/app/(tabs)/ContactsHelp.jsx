@@ -50,7 +50,7 @@ export default function ContactScreen() {
   const handleScroll = (event) => {
     const currentY = event.nativeEvent.contentOffset.y;
 
-    const barStyle = theme === "dark" ? "light-content" : "dark-content";
+    const barStyle = theme === "dark" ? "light-content" : "light-content";
 
     if (currentY > 50 && lastHeaderState.current) {
       navigation.setOptions({ headerShown: false });
