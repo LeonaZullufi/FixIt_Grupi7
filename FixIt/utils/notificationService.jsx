@@ -1,5 +1,13 @@
 import * as Notifications from "expo-notifications";
-import { addDoc, collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  doc,
+} from "firebase/firestore";
 import { db } from "../firebase";
 
 Notifications.setNotificationHandler({
@@ -34,8 +42,7 @@ export const requestNotificationPermissions = async () => {
 };
 
 /**
- * Save notification to Firestore (without sending push notification)
- * Push notification will be sent when user logs in
+ *
  * @param {string} userEmail
  * @param {string} reportId
  * @param {string} placeName
@@ -74,7 +81,6 @@ export const saveReportStatusNotification = async (
     } Statusi i raportit u përditësua`;
     const body = `${getStatusMessage(status)} - ${placeName}`;
 
-    // Only save to Firestore, don't send push notification yet
     await addDoc(collection(db, "notifications"), {
       userEmail,
       reportId,
@@ -84,7 +90,7 @@ export const saveReportStatusNotification = async (
       title,
       body,
       read: false,
-      notificationSent: false, // Track if push notification was sent
+      notificationSent: false,
       createdAt: new Date(),
     });
 
@@ -97,8 +103,8 @@ export const saveReportStatusNotification = async (
 };
 
 /**
- * Send push notification for a single notification document
- * @param {object} notification - Notification document from Firestore
+ *
+ * @param {object} notification
  */
 export const sendPushNotification = async (notification) => {
   try {
@@ -119,7 +125,7 @@ export const sendPushNotification = async (notification) => {
         },
         sound: true,
       },
-      trigger: null, // Show immediately
+      trigger: null,
     });
 
     return true;
@@ -130,12 +136,11 @@ export const sendPushNotification = async (notification) => {
 };
 
 /**
- * Check for unread notifications and send push notifications when user logs in
- * @param {string} userEmail - Email of the logged in user
+ *
+ * @param {string} userEmail
  */
 export const checkAndSendPendingNotifications = async (userEmail) => {
   try {
-    // Query unread notifications that haven't been sent yet
     const notificationsQuery = query(
       collection(db, "notifications"),
       where("userEmail", "==", userEmail),
@@ -144,7 +149,7 @@ export const checkAndSendPendingNotifications = async (userEmail) => {
     );
 
     const snapshot = await getDocs(notificationsQuery);
-    
+
     if (snapshot.empty) {
       console.log("No pending notifications to send");
       return;
@@ -156,14 +161,11 @@ export const checkAndSendPendingNotifications = async (userEmail) => {
       return;
     }
 
-    // Send push notifications for each unread notification
     const promises = snapshot.docs.map(async (docSnap) => {
       const notification = { id: docSnap.id, ...docSnap.data() };
-      
-      // Send push notification
+
       await sendPushNotification(notification);
-      
-      // Mark as sent
+
       await updateDoc(doc(db, "notifications", docSnap.id), {
         notificationSent: true,
       });

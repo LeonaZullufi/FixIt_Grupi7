@@ -11,7 +11,7 @@ export default function SettingsScreen({ onClose }) {
   const [expandedSetting, setExpandedSetting] = useState(null);
   const [language, setLanguage] = useState("Anglisht");
   const languages = ["Anglisht", "Shqip"];
-  const { theme: appTheme, toggleTheme, colors } = useTheme(); // ✅ theme + colors
+  const { theme: appTheme, toggleTheme, colors } = useTheme();
   const themes = ["Dritë", "Errët"];
   const router = useRouter();
 

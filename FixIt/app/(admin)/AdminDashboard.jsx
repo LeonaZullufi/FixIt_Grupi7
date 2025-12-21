@@ -20,7 +20,7 @@ import {
 import { db, auth } from "../../firebase";
 import { signOut } from "firebase/auth";
 import { router, useNavigation } from "expo-router";
-import { saveReportStatusNotification } from "../../utils/notificationService";
+import { sendReportStatusNotification } from "../../utils/notificationService";
 
 export default function AdminDashboard() {
   const [reports, setReports] = useState([]);
@@ -53,21 +53,18 @@ export default function AdminDashboard() {
 
   const updateStatus = async (reportId, status) => {
     try {
-      // Get the report data before updating
       const reportRef = doc(db, "reports", reportId);
       const reportData = reports.find((r) => r.id === reportId);
-      
+
       if (!reportData) {
         console.error("Report not found");
         return;
       }
 
-      // Update the report status
       await updateDoc(reportRef, { status });
 
-      // Save notification to Firestore (will be sent when user logs in)
       if (reportData.userEmail) {
-        await saveReportStatusNotification(
+        await sendReportStatusNotification(
           reportData.userEmail,
           reportId,
           reportData.placeName || "Vend i panjohur",
@@ -108,9 +105,7 @@ export default function AdminDashboard() {
             <View style={{ flex: 1 }}>
               <Text style={styles.place}>{r.placeName}</Text>
               <Text style={styles.desc}>{r.description}</Text>
-              <Text style={styles.status}>
-                Status: {statusLabel(r.status)}
-              </Text>
+              <Text style={styles.status}>Status: {statusLabel(r.status)}</Text>
             </View>
 
             <TouchableOpacity

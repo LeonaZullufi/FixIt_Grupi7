@@ -28,8 +28,8 @@ export const VALIDATION_MESSAGES = {
 };
 
 /**
- * @param {Object} form - Current form values
- * @param {Object} initialForm - Initial form values
+ * @param {Object} form
+ * @param {Object} initialForm
  * @returns {Object}
  */
 export const validateProfileForm = (form, initialForm) => {

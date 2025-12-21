@@ -1,6 +1,6 @@
 /**
- * @param {Error} error - Firebase error object
- * @returns {string} - User-friendly error message
+ * @param {Error} error
+ * @returns {string}
  */
 export const getErrorMessage = (error) => {
   const defaultMessage =

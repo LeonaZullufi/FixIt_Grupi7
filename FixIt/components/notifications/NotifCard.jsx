@@ -49,9 +49,7 @@ const NotifCard = memo(({ notification, onPress }) => {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return "";
-    const date = timestamp.toDate
-      ? timestamp.toDate()
-      : new Date(timestamp);
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     const now = new Date();
     const diff = now - date;
     const minutes = Math.floor(diff / 60000);
@@ -69,7 +67,6 @@ const NotifCard = memo(({ notification, onPress }) => {
     if (onPress) {
       onPress();
     }
-    // Navigate to the report details or problems screen
     router.push("/(tabs)/ProblemsScreen");
   };
 
@@ -250,4 +247,3 @@ const styles = StyleSheet.create({
 });
 
 export default NotifCard;
-
