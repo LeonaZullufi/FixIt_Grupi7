@@ -1,7 +1,6 @@
-import React, { useState, useLayoutEffect, useEffect } from "react";
+import React, { useState, useLayoutEffect } from "react";
 import {
   View,
-  Text,
   ScrollView,
   Modal,
   StyleSheet,
@@ -9,40 +8,26 @@ import {
   SafeAreaView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import SettingsCard from "../../components/settings/SettingsCard";
 import SettingsScreen from "../../components/settings/SettingsScreen";
+import {
+  ProfileImagePicker,
+  ProfileInfo,
+  ProfileStats,
+  useProfileData,
+  useProfileStats,
+} from "../../components/editProfile";
 import { useNavigation } from "expo-router";
-import { auth, db } from "../../firebase";
-import { doc, collection, query, where, onSnapshot } from "firebase/firestore";
 import { useTheme } from "../../context/themeContext";
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const [isModalVisible, setIsModalVisible] = useState(false);
-
-  const [firstName, setFirstName] = useState("Duke u ngarkuar...");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [stats, setStats] = useState([
-    {
-      id: "1",
-      label: "Raportimet e mia",
-      value: 0,
-      color: "#F5A623",
-      emoji: "📋",
-    },
-    {
-      id: "2",
-      label: "Të rregulluar",
-      value: 0,
-      color: "#4CD964",
-      emoji: "✅",
-    },
-    { id: "3", label: "Në progres", value: 0, color: "#007AFF", emoji: "🔄" },
-    { id: "4", label: "Në pritje", value: 0, color: "#FF3B30", emoji: "🕓" },
-  ]);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const { colors } = useTheme();
+  const { firstName, lastName, email, profileImageUrl, setProfileImageUrl } =
+    useProfileData();
+  const stats = useProfileStats();
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -64,129 +49,17 @@ export default function ProfileScreen() {
     });
   }, [navigation, colors.tabInactive, colors.tabBar, colors.text]);
 
-  useEffect(() => {
-    let unsubscribeFirestore = null;
+  const handleUploadStart = () => {
+    setUploadingImage(true);
+  };
 
-    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
-      if (unsubscribeFirestore) {
-        unsubscribeFirestore();
-        unsubscribeFirestore = null;
-      }
+  const handleUploadEnd = () => {
+    setUploadingImage(false);
+  };
 
-      if (!user) {
-        setFirstName("Nuk ka përdorues të kyçur");
-        setLastName("");
-        setEmail("");
-        return;
-      }
-
-      setEmail(user.email || "Nuk ka email");
-      setFirstName("Duke u ngarkuar...");
-
-      const docRef = doc(db, "users", user.uid);
-
-      unsubscribeFirestore = onSnapshot(
-        docRef,
-        (snap) => {
-          if (snap.exists()) {
-            const data = snap.data();
-            const fName = data.firstName || "";
-            const lName = data.lastName || "";
-
-            setFirstName(fName || "Pa emër");
-            setLastName(lName);
-          } else {
-            setFirstName("Pa emër");
-            setLastName("Dokumenti nuk ekziston");
-          }
-        },
-        (error) => {
-          console.error("Gabim gjatë marrjes së dokumentit: ", error);
-          setFirstName("Gabim");
-          setLastName("(Shiko konsolën)");
-        }
-      );
-    });
-
-    return () => {
-      unsubscribeAuth();
-      if (unsubscribeFirestore) {
-        unsubscribeFirestore();
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const user = auth.currentUser;
-    if (!user || !user.email) {
-      return;
-    }
-
-    const reportsQuery = query(
-      collection(db, "reports"),
-      where("userEmail", "==", user.email)
-    );
-
-    const unsubscribe = onSnapshot(
-      reportsQuery,
-      (snapshot) => {
-        let totalReports = 0;
-        let finishedReports = 0;
-        let inProgressReports = 0;
-        let pendingReports = 0;
-
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          totalReports++;
-
-          if (data.finished === true) {
-            finishedReports++;
-          } else {
-            inProgressReports++;
-            pendingReports++;
-          }
-        });
-
-        setStats([
-          {
-            id: "1",
-            label: "Raportimet e mia",
-            value: totalReports,
-            color: "#F5A623",
-            emoji: "📋",
-          },
-          {
-            id: "2",
-            label: "Të rregulluar",
-            value: finishedReports,
-            color: "#4CD964",
-            emoji: "✅",
-          },
-          {
-            id: "3",
-            label: "Në progres",
-            value: inProgressReports,
-            color: "#007AFF",
-            emoji: "🔄",
-          },
-          {
-            id: "4",
-            label: "Në pritje",
-            value: pendingReports,
-            color: "#FF3B30",
-            emoji: "🕓",
-          },
-        ]);
-      },
-      (error) => {
-        console.error("Gabim gjatë marrjes së raporteve: ", error);
-      }
-    );
-
-    return () => unsubscribe();
-  }, []);
-
-  const fullName = `${firstName} ${lastName}`.trim();
+  const handleImageUpdate = (newImageUrl) => {
+    setProfileImageUrl(newImageUrl);
+  };
 
   return (
     <SafeAreaView
@@ -198,26 +71,21 @@ export default function ProfileScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.profileContainer}>
-            <Ionicons
-              name="person-circle-outline"
-              size={90}
-              color={colors.tabBar}
+            <ProfileImagePicker
+              profileImageUrl={profileImageUrl}
+              uploadingImage={uploadingImage}
+              onUploadStart={handleUploadStart}
+              onUploadEnd={handleUploadEnd}
+              onImageUpdate={handleImageUpdate}
             />
-            <Text style={[styles.name, { color: colors.text }]}>
-              {fullName}
-            </Text>
-            <Text style={[styles.email, { color: colors.textSecondary }]}>
-              {email}
-            </Text>
+            <ProfileInfo
+              firstName={firstName}
+              lastName={lastName}
+              email={email}
+            />
           </View>
 
-          <View
-            style={[styles.statsContainer, { backgroundColor: colors.card }]}
-          >
-            {stats.map((item) => (
-              <SettingsCard key={item.id} item={item} />
-            ))}
-          </View>
+          <ProfileStats stats={stats} />
         </ScrollView>
 
         <Modal
@@ -262,25 +130,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 30,
   },
-  name: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginTop: 8,
-  },
-  email: {
-    opacity: 0.7,
-    marginTop: 4,
-    fontSize: 16,
-  },
-  statsContainer: {
-    borderRadius: 30,
-    paddingVertical: 25,
-    paddingHorizontal: 15,
-    marginBottom: 40,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
@@ -289,8 +138,5 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: "100%",
-  },
-  fontHeader: {
-    color: "#fff",
   },
 });
