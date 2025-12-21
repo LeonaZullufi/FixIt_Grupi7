@@ -8,7 +8,6 @@ import { auth } from "../../firebase";
 import { useTheme } from "../../context/themeContext";
 
 export default function SettingsScreen({ onClose }) {
-  const [notifications, setNotifications] = useState(true);
   const [expandedSetting, setExpandedSetting] = useState(null);
   const [language, setLanguage] = useState("Anglisht");
   const languages = ["Anglisht", "Shqip"];
@@ -35,8 +34,8 @@ export default function SettingsScreen({ onClose }) {
       id: "3",
       icon: "bell",
       label: "Njoftimet",
-      value: notifications,
-      type: "switch",
+      type: "button",
+      isNotification: true,
     },
     { id: "4", label: "Dil", icon: "log-out", type: "button", isLogout: true },
   ];
@@ -57,6 +56,9 @@ export default function SettingsScreen({ onClose }) {
     } else if (item.isProfile) {
       onClose();
       router.push("/editProfile");
+    } else if (item.isNotification) {
+      onClose();
+      router.push("/notificationSettings");
     }
   };
 
@@ -91,7 +93,7 @@ export default function SettingsScreen({ onClose }) {
           setExpandedSetting={setExpandedSetting}
           language={language}
           setLanguage={setLanguage}
-          setNotifications={setNotifications}
+          setNotifications={() => {}}
           handleSettingPress={handleSettingPress}
           theme={appTheme}
           setTheme={toggleTheme}

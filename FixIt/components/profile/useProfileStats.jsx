@@ -45,9 +45,9 @@ export function useProfileStats() {
           const data = docSnap.data();
           totalReports++;
 
-          if (data.finished === true) {
+          if (data.status === "completed") {
             finishedReports++;
-          } else if (data.inProgres === true) {
+          } else if (data.status === "in_progress") {
             inProgressReports++;
           } else {
             pendingReports++;
@@ -95,4 +95,3 @@ export function useProfileStats() {
 
   return stats;
 }
-
