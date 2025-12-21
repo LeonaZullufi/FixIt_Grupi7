@@ -123,7 +123,6 @@ export default function ReportScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            {/* UPDATED LINE: Using problemTitle instead of description */}
             <Text style={styles.modalTitle}>{selectedMarker?.problemTitle}</Text>
             
             <View style={[styles.statusBadge, { backgroundColor: selectedMarker?.status === 'in_progress' ? 'orange' : '#2196F3' }]}>
@@ -195,7 +194,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 10,
     color: "#333",
-    textTransform: "capitalize", // Optional: makes the title look cleaner
+    textTransform: "capitalize", 
   },
   statusBadge: {
     paddingVertical: 5,
