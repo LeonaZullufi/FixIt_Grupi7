@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   },
   legendItem: { flexDirection: "row", alignItems: "center" },
   dot: { width: 10, height: 10, borderRadius: 5, marginRight: 6 },
-  legendLabel: { fontSize: 12, fontWeight: "600", color: "#555" },
+  legendLabel: { fontSize: 10, fontWeight: "600", color: "#555" },
 
   modalOverlay: {
     flex: 1,
