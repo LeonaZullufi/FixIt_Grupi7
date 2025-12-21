@@ -19,7 +19,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  FlatList,
   Alert,
   Animated,
   Easing,
@@ -70,12 +69,11 @@ const ReportMarker = React.memo(({ report, onPress }) => (
   />
 ));
 
-
 export default function ReportScreen() {
   const navigation = useNavigation();
   const { colors } = useTheme();
-  const [problemTitle, setProblemTitle] = useState("");
 
+  const [problemTitle, setProblemTitle] = useState("");
   const [photoUri, setPhotoUri] = useState(null);
   const [photoBase64, setPhotoBase64] = useState(null);
   const [description, setDescription] = useState("");
@@ -126,7 +124,6 @@ export default function ReportScreen() {
     return unsub;
   }, []);
 
-  // ✅ ANDROID SAFE
   const processImage = (asset) => {
     setPhotoUri(asset.uri);
     setPhotoBase64(asset.base64);
@@ -142,9 +139,7 @@ export default function ReportScreen() {
       base64: true,
     });
 
-    if (!result.canceled) {
-      processImage(result.assets[0]);
-    }
+    if (!result.canceled) processImage(result.assets[0]);
   }, []);
 
   const pickFromGallery = useCallback(async () => {
@@ -157,9 +152,7 @@ export default function ReportScreen() {
       base64: true,
     });
 
-    if (!result.canceled) {
-      processImage(result.assets[0]);
-    }
+    if (!result.canceled) processImage(result.assets[0]);
   }, []);
 
   const openPhotoPicker = useCallback(() => {
@@ -191,8 +184,14 @@ export default function ReportScreen() {
   }, []);
 
   const canSend = useMemo(
-    () => !!(pinLocation && photoBase64 && description.trim().length > 0 && problemTitle.trim().length > 0),
-    [pinLocation, photoBase64, description,problemTitle]
+    () =>
+      !!(
+        pinLocation &&
+        photoBase64 &&
+        description.trim().length > 0 &&
+        problemTitle.trim().length > 0
+      ),
+    [pinLocation, photoBase64, description, problemTitle]
   );
 
   const showSuccessPopup = () => {
@@ -223,6 +222,7 @@ export default function ReportScreen() {
     setLoading(true);
     try {
       await addDoc(collection(db, "reports"), {
+        problemTitle,
         latitude: pinLocation.latitude,
         longitude: pinLocation.longitude,
         placeName,
@@ -233,22 +233,19 @@ export default function ReportScreen() {
         status: "pending",
       });
 
+      setProblemTitle("");
       setPhotoUri(null);
       setPhotoBase64(null);
-      setProblemTitle("");
       setDescription("");
-
       setPinLocation(null);
       setPlaceName("");
       showSuccessPopup();
-    } catch (e) {
+    } catch {
       setErrorMessage("Gabim gjatë dërgimit.");
     } finally {
       setLoading(false);
     }
-  }, [canSend, pinLocation, photoBase64, description, placeName]);
-
-  const openReport = useCallback((r) => setOpenedReport(r), []);
+  }, [canSend, problemTitle, pinLocation, photoBase64, description, placeName]);
 
   return (
     <KeyboardAvoidingView
@@ -281,7 +278,7 @@ export default function ReportScreen() {
               <Marker coordinate={pinLocation} pinColor="blue" />
             )}
             {reports.map((r) => (
-              <ReportMarker key={r.id} report={r} onPress={openReport} />
+              <ReportMarker key={r.id} report={r} onPress={setOpenedReport} />
             ))}
           </MapView>
 
@@ -315,15 +312,17 @@ export default function ReportScreen() {
           )}
 
           <TextInput
-  style={styles.input}
-  placeholder="Emri i problemit..."
-  value={problemTitle}
-  onChangeText={setProblemTitle}
-/>
+            style={styles.input}
+            placeholder="Emri i problemit..."
+            placeholderTextColor="#6c757d"
+            value={problemTitle}
+            onChangeText={setProblemTitle}
+          />
 
           <TextInput
             style={styles.input}
             placeholder="Përshkrimi..."
+            placeholderTextColor="#6c757d"
             value={description}
             onChangeText={setDescription}
             multiline
@@ -344,6 +343,34 @@ export default function ReportScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {showSuccess && (
+        <Modal transparent animationType="none">
+          <View style={styles.successOverlay}>
+            <Animated.View
+              style={[
+                styles.successPopup,
+                {
+                  transform: [
+                    {
+                      scale: successAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.7, 1],
+                      }),
+                    },
+                  ],
+                  opacity: successAnim,
+                },
+              ]}
+            >
+              <Text style={styles.successIcon}>✅</Text>
+              <Text style={styles.successText}>
+                Raporti u dërgua me sukses
+              </Text>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -402,4 +429,27 @@ const styles = StyleSheet.create({
   },
   sendText: { textAlign: "center", color: "white", fontSize: 18 },
   error: { textAlign: "center", color: "red", marginTop: 10 },
+  successOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  successPopup: {
+    backgroundColor: "white",
+    padding: 25,
+    borderRadius: 20,
+    alignItems: "center",
+    width: "80%",
+  },
+  successIcon: {
+    fontSize: 40,
+    marginBottom: 10,
+  },
+  successText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#023e8a",
+    textAlign: "center",
+  },
 });
