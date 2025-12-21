@@ -7,20 +7,19 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  SafeAreaView,
+  Dimensions,
 } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { db } from "../../firebase.js";
 
+const { width } = Dimensions.get("window");
+
 const mapStyle = [
   { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
 ];
-
-const LATITUDE_MIN = 40.8;
-const LATITUDE_MAX = 44.3;
-const LONGITUDE_MIN = 19.8;
-const LONGITUDE_MAX = 22.8;
 
 export default function ReportScreen() {
   const [selectedMarker, setSelectedMarker] = useState(null);
@@ -37,36 +36,16 @@ export default function ReportScreen() {
   const auth = getAuth();
   const currentUserEmail = auth.currentUser?.email || "";
 
-  const onRegionChangeComplete = (newRegion) => {
-    let { latitude, longitude } = newRegion;
-
-    if (latitude < LATITUDE_MIN) latitude = LATITUDE_MIN;
-    if (latitude > LATITUDE_MAX) latitude = LATITUDE_MAX;
-    if (longitude < LONGITUDE_MIN) longitude = LONGITUDE_MIN;
-    if (longitude > LONGITUDE_MAX) longitude = LONGITUDE_MAX;
-
-    setRegion({ ...newRegion, latitude, longitude });
-  };
-
   useEffect(() => {
     const q = query(collection(db, "reports"));
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setReports(data);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Firestore error:", error);
-        setLoading(false);
-      }
-    );
-
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setReports(data);
+      setLoading(false);
+    });
     return () => unsubscribe();
   }, []);
 
@@ -74,7 +53,7 @@ export default function ReportScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2196F3" />
-        <Text style={{ marginTop: 10 }}>Duke ngarkuar raportet...</Text>
+        <Text style={{ marginTop: 10 }}>Duke ngarkuar hartën...</Text>
       </View>
     );
   }
@@ -86,154 +65,178 @@ export default function ReportScreen() {
       ? {
           uri: selectedMarker.photoBase64.startsWith("data:image")
             ? selectedMarker.photoBase64.replace(/\s/g, "")
-            : `data:image/jpeg;base64,${selectedMarker.photoBase64.replace(
-                /\s/g,
-                ""
-              )}`,
+            : `data:image/jpeg;base64,${selectedMarker.photoBase64.replace(/\s/g, "")}`,
         }
       : null;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.legendBar}>
+        <View style={styles.legendItem}>
+          <View style={[styles.dot, { backgroundColor: "red" }]} />
+          <Text style={styles.legendLabel}>Rap. e  mia (Pritje)</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.dot, { backgroundColor: "blue" }]} />
+          <Text style={styles.legendLabel}>Rap. e të tjerëve (Pritje)</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.dot, { backgroundColor: "brown" }]} />
+          <Text style={styles.legendLabel}>Në Progres</Text>
+        </View>
+      </View>
+
       <MapView
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         region={region}
-        onRegionChangeComplete={onRegionChangeComplete}
         customMapStyle={mapStyle}
       >
         {reports
-          // FILTRI: Shfaq vetëm raportet që janë "pending" ose "in_progress"
-          .filter(
-            (report) =>
-              report.status === "pending" || report.status === "in_progress"
-          )
+          .filter(report => report.status === "pending" || report.status === "in_progress")
           .map((report) => {
             const isMyReport = report.userEmail === currentUserEmail;
+            let pinColor = "blue";
 
-            // Përcaktimi i ngjyrës:
-            // Të gjitha raportet "in_progress"/"pending" bëhen portokalli (më e afërta me kafen)
-            // Nëse dëshiron t'i dallosh raportet e tua, mund t'i lësh Red
-            let pinColor = "orange";
-            if (isMyReport) pinColor = "red";
+            if (report.status === "in_progress") {
+              pinColor = "orange";
+            } else if (report.status === "pending" && isMyReport) {
+              pinColor = "red";
+            }
 
             return (
               <Marker
                 key={report.id}
-                coordinate={{
-                  latitude: report.latitude,
-                  longitude: report.longitude,
-                }}
+                coordinate={{ latitude: report.latitude, longitude: report.longitude }}
                 pinColor={pinColor}
                 onPress={() => setSelectedMarker(report)}
-                calloutEnabled={false}
               />
             );
           })}
       </MapView>
 
-      <Modal
-        visible={!!selectedMarker}
-        transparent
+      {/* MODAL PËR DETAJET ME FADE EFFECT */}
+      <Modal 
+        visible={!!selectedMarker} 
+        transparent={true} 
         animationType="fade"
         onRequestClose={() => setSelectedMarker(null)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {selectedMarker?.description?.length > 30
-                ? `${selectedMarker.description.substring(0, 30)}...`
-                : selectedMarker?.description}
-            </Text>
-
-            {/* Statusi në Modal */}
-            <Text style={styles.statusBadge}>
-              Statusi: {selectedMarker?.status}
-            </Text>
+            <Text style={styles.modalTitle}>{selectedMarker?.description}</Text>
+            
+            <View style={[styles.statusBadge, { backgroundColor: selectedMarker?.status === 'in_progress' ? 'orange' : '#2196F3' }]}>
+              <Text style={styles.statusText}>
+                {selectedMarker?.status === 'in_progress' ? 'NË PROGRES' : 'NË PRITJE'}
+              </Text>
+            </View>
 
             {photoSource ? (
-              <Image
-                source={photoSource}
-                style={styles.image}
-                resizeMode="contain"
-              />
+              <Image source={photoSource} style={styles.largeImage} resizeMode="cover" />
             ) : (
-              <View style={[styles.image, styles.noImage]}>
-                <Text style={{ color: "#888" }}>No photo</Text>
+              <View style={[styles.largeImage, styles.noImagePlaceholder]}>
+                <Text style={{ color: "#999" }}>Nuk ka foto</Text>
               </View>
             )}
 
-            <Text style={styles.description}>
-              {selectedMarker?.description}
-            </Text>
+            <Text style={styles.modalDescription}>{selectedMarker?.description}</Text>
 
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setSelectedMarker(null)}
-            >
-              <Text style={{ color: "white" }}>Mbyll</Text>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setSelectedMarker(null)}>
+              <Text style={styles.closeButtonText}>Mbyll</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  map: { flex: 1, width: "100%" },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+  container: { flex: 1, backgroundColor: "#fff" },
+  map: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  
+  legendBar: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 12,
+    backgroundColor: "#ffffff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    elevation: 3,
+    zIndex: 10,
   },
+  legendItem: { flexDirection: "row", alignItems: "center" },
+  dot: { width: 10, height: 10, borderRadius: 5, marginRight: 6 },
+  legendLabel: { fontSize: 12, fontWeight: "600", color: "#555" },
+
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.7)", // Pak më e errët për fokus më të mirë
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
     backgroundColor: "white",
+    width: "90%", // Më i gjerë
+    borderRadius: 25,
     padding: 20,
-    borderRadius: 12,
-    width: 340,
-    maxHeight: 520,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
   },
   modalTitle: {
     fontWeight: "bold",
-    fontSize: 18,
+    fontSize: 20,
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: 10,
+    color: "#333",
   },
   statusBadge: {
-    color: "#795548",
-    fontWeight: "bold",
-    marginBottom: 10,
-    fontStyle: "italic",
+    paddingVertical: 5,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    marginBottom: 15,
   },
-  image: {
-    width: 300,
-    height: 200,
-    marginTop: 10,
-    borderRadius: 8,
+  statusText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
-  noImage: {
-    backgroundColor: "#eee",
+  // STILI I RI PËR FOTON E MADHE
+  largeImage: {
+    width: width * 0.8, // 80% e gjerësisë së ekranit
+    height: 250,        // Lartësi më e madhe
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  noImagePlaceholder: {
+    backgroundColor: "#f5f5f5",
     justifyContent: "center",
     alignItems: "center",
   },
-  description: {
-    marginTop: 10,
+  modalDescription: {
+    marginTop: 15,
+    fontSize: 16,
     textAlign: "center",
+    color: "#444",
+    lineHeight: 22,
   },
   closeButton: {
     backgroundColor: "#2196F3",
     marginTop: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 50,
+    borderRadius: 30,
   },
+  closeButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  }
 });
