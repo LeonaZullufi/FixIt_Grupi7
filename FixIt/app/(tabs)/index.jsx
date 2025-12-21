@@ -35,17 +35,16 @@ const ExploreScreen = () => {
     if (currentY > 50 && lastHeaderState.current) {
       navigation.setOptions({ headerShown: false });
       lastHeaderState.current = false;
-      StatusBar.setBarStyle(barStyle, true);
+      StatusBar.setBarStyle(barStyle);
     }
 
     if (currentY < 30 && !lastHeaderState.current) {
       navigation.setOptions({ headerShown: true });
       lastHeaderState.current = true;
-      StatusBar.setBarStyle(barStyle, true);
+      StatusBar.setBarStyle("light-content");
     }
   };
 
-  // 🔁 Lexo statistikat nga Firestore
   useEffect(() => {
     const user = auth.currentUser;
     const userEmail = user?.email ?? null;

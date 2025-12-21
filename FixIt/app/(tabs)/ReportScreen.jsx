@@ -16,7 +16,7 @@ import {
 import MapView, { Marker } from "react-native-maps";
 import { useNavigation } from "expo-router";
 import { useTheme } from "../../context/themeContext";
-import { auth, db } from "../../firebase";
+import { auth, db, storage } from "../../firebase";
 import {
   collection,
   addDoc,
@@ -27,6 +27,9 @@ import {
   deleteDoc,
   updateDoc,
 } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+/* ================= ADDRESS ================= */
 
 async function getAddressFromCoords(lat, lng) {
   try {
@@ -41,12 +44,44 @@ async function getAddressFromCoords(lat, lng) {
   }
 }
 
+/* ================= UPLOAD IMAGE ================= */
+const uriToBase64 = async (uri) => {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject("Failed to convert image");
+    reader.onload = () => {
+      const base64data = reader.result.split(",")[1]; // REMOVE prefix
+      resolve(base64data);
+    };
+    reader.readAsDataURL(blob);
+  });
+};
+
+const uploadImageToFirebase = async (uri, email) => {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+
+  const fileName = `reports/${email}_${Date.now()}.jpg`;
+  const imageRef = ref(storage, fileName);
+
+  await uploadBytes(imageRef, blob);
+  const downloadURL = await getDownloadURL(imageRef);
+
+  return downloadURL;
+};
+
+/* ================= COMPONENT ================= */
+
 export default function ReportScreen() {
   const navigation = useNavigation();
   const { colors } = useTheme();
 
   const [photoUri, setPhotoUri] = useState(null);
   const [description, setDescription] = useState("");
+  const [photoBase64, setPhotoBase64] = useState(null);
   const [photoPickerVisible, setPhotoPickerVisible] = useState(false);
   const [editPhotoVisible, setEditPhotoVisible] = useState(false);
 
@@ -61,15 +96,29 @@ export default function ReportScreen() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  useEffect(() => {
-    if (errorMessage || successMessage) {
-      const timer = setTimeout(() => {
-        setErrorMessage(null);
-        setSuccessMessage(null);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [errorMessage, successMessage]);
+ useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return setLoadingReports(false);
+
+    const q = query(
+      collection(db, "reports"),
+      where("userEmail", "==", user.email)
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setReports(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setLoadingReports(false);
+      },
+      () => {
+        setLoadingReports(false);
+        setErrorMessage("Nuk u lexuan raportet.");
+      }
+    );
+
+    return () => unsub();
+  }, []);
 
   const takePhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -84,7 +133,10 @@ export default function ReportScreen() {
     });
 
     if (!result.canceled) {
-      setPhotoUri(result.assets[0].uri);
+      const uri = result.assets[0].uri;
+      setPhotoUri(uri);
+      const base64 = await uriToBase64(uri);
+      setPhotoBase64(base64);
     }
   };
 
@@ -138,12 +190,12 @@ export default function ReportScreen() {
 
     setLoading(true);
 
-    try {
+   try {
       await addDoc(collection(db, "reports"), {
         latitude: pinLocation.latitude,
         longitude: pinLocation.longitude,
         placeName,
-        photoUri,
+        photoBase64, // 🔥 BASE64 RUHET NË FIRESTORE
         description,
         userEmail: user.email,
         createdAt: Date.now(),
@@ -151,41 +203,15 @@ export default function ReportScreen() {
       });
 
       setPhotoUri(null);
+      setPhotoBase64(null);
       setDescription("");
       setPinLocation(null);
       setPlaceName("");
 
       setSuccessMessage("Raporti u dërgua me sukses!");
-    } catch {
+    } catch (e) {
+      console.log(e);
       setErrorMessage("Gabim gjatë dërgimit.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const deleteReport = async (id) => {
-    setLoading(true);
-    try {
-      await deleteDoc(doc(db, "reports", id));
-      setOpenedReport(null);
-      setSuccessMessage("Raporti u fshi.");
-    } catch {
-      setErrorMessage("Gabim gjatë fshirjes.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateReport = async (id) => {
-    setLoading(true);
-    try {
-      await updateDoc(doc(db, "reports", id), {
-        description: editDescription,
-      });
-      setOpenedReport(null);
-      setSuccessMessage("Raporti u përditësua.");
-    } catch {
-      setErrorMessage("Gabim gjatë përditësimit.");
     } finally {
       setLoading(false);
     }
@@ -201,9 +227,7 @@ export default function ReportScreen() {
         style={{ flex: 1, backgroundColor: colors.background }}
         contentContainerStyle={{ paddingBottom: 150 }}
       >
-        <View
-          style={[styles.container, { backgroundColor: colors.background }]}
-        >
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
           <Text style={styles.title}>Raporto një problem</Text>
 
           {loadingReports && (
@@ -228,7 +252,9 @@ export default function ReportScreen() {
               longitudeDelta: 0.01,
             }}
           >
-            {pinLocation && <Marker coordinate={pinLocation} pinColor="blue" />}
+            {pinLocation && (
+              <Marker coordinate={pinLocation} pinColor="blue" />
+            )}
             {reports.map((r) => (
               <Marker
                 key={r.id}
@@ -276,44 +302,28 @@ export default function ReportScreen() {
               {loading ? "Duke dërguar..." : "Dërgo Raportin"}
             </Text>
           </TouchableOpacity>
+
           {/* DETAILS MODAL */}
           <Modal visible={openedReport !== null} animationType="slide">
             {openedReport && (
               <ScrollView style={{ backgroundColor: colors.background }}>
                 <View style={{ padding: 20 }}>
-                  {/* FOTO */}
                   <Image
-                    source={{ uri: openedReport.photoUri }}
-                    style={{
-                      width: "100%",
-                      height: 300,
-                      borderRadius: 15,
-                    }}
-                  />
+  source={{
+    uri: `data:image/jpeg;base64,${openedReport.photoBase64}`,
+  }}
+  style={{ width: "100%", height: 300, borderRadius: 15 }}
+/>
 
-                  {/* PERSHKRIMI */}
-                  <Text
-                    style={{
-                      marginTop: 15,
-                      fontSize: 16,
-                      color: colors.text,
-                    }}
-                  >
+
+                  <Text style={{ marginTop: 15 }}>
                     📝 {openedReport.description}
                   </Text>
 
-                  {/* VENDI */}
-                  <Text
-                    style={{
-                      marginTop: 10,
-                      fontSize: 14,
-                      color: "gray",
-                    }}
-                  >
+                  <Text style={{ marginTop: 10, color: "gray" }}>
                     📍 {openedReport.placeName}
                   </Text>
 
-                  {/* MBYLL */}
                   <TouchableOpacity
                     style={{
                       marginTop: 25,
@@ -337,6 +347,8 @@ export default function ReportScreen() {
   );
 }
 
+/* ================= STYLES ================= */
+
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 45 },
   title: {
@@ -354,12 +366,7 @@ const styles = StyleSheet.create({
   loadingText: { marginLeft: 8, color: "#0077b6" },
   errorText: { textAlign: "center", color: "red", marginTop: 10 },
   successText: { textAlign: "center", color: "green", marginTop: 10 },
-  map: {
-    height: 300,
-    width: "100%",
-    marginTop: 10,
-    borderRadius: 10,
-  },
+  map: { height: 300, width: "100%", marginTop: 10 },
   input: {
     borderWidth: 1,
     borderColor: "#aaa",
