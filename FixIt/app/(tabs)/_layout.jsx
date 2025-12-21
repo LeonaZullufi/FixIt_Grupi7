@@ -39,16 +39,12 @@ export default function RootLayout() {
           <Tabs
             screenOptions={{
               headerStyle: {
-                height: 35,
+                height: 75,
                 backgroundColor: "#023e8a",
               },
               headerTitleAlign: "center",
               headerTintColor: "white",
-              headerTitleStyle: {
-                marginTop: -55, 
-                fontSize: 18,
-                fontWeight: "bold",
-              },
+
               headerBackground: () => (
                 <View style={{ flex: 1, backgroundColor: "#023e8a" }} />
               ),
