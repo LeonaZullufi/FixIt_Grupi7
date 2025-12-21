@@ -79,7 +79,6 @@ export default function ReportScreen() {
     );
   }
 
-  // ✅ FIXED BASE64 HANDLING
   const photoSource =
     selectedMarker?.photoBase64 &&
     typeof selectedMarker.photoBase64 === "string" &&

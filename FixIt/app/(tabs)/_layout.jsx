@@ -1,11 +1,9 @@
-// app/(tabs)/_layout.jsx
 import React, { useEffect, useState } from "react";
 import { Image, StyleSheet, View, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Tabs, useRouter } from "expo-router";
 import { ThemeProvider } from "../../context/themeContext";
-
 import { auth, onAuthStateChanged } from "../../firebase";
 
 export default function RootLayout() {
@@ -36,24 +34,23 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <View style={styles.root}>
-        <StatusBar style="dark" backgroundColor="#023e8a" />
-
+        <StatusBar backgroundColor="#023e8a" />
         <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
           <Tabs
             screenOptions={{
               headerStyle: {
-                height: 75,
+                height: 35,
                 backgroundColor: "#023e8a",
               },
               headerTitleAlign: "center",
               headerTintColor: "white",
+              headerTitleStyle: {
+                marginTop: -55, 
+                fontSize: 18,
+                fontWeight: "bold",
+              },
               headerBackground: () => (
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#023e8a",
-                  }}
-                />
+                <View style={{ flex: 1, backgroundColor: "#023e8a" }} />
               ),
               tabBarActiveTintColor: "#A4FFFF",
               tabBarInactiveTintColor: "white",
